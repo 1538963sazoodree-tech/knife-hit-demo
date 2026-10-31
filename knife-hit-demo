@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Knife Hit Clone</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body { background: #164c56; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; font-family: 'Montserrat', sans-serif; transition: background 0.5s; }
+        body.boss-mode { background: #1a0000; }
+        body.weekly-mode { background: #0a0510; }
+        canvas { display: block; background: transparent; }
+        
+        #ui { position: absolute; top: 30px; width: 100%; display: flex; justify-content: space-between; padding: 0 30px; z-index: 10; pointer-events: none; }
+        .ui-block { display: flex; align-items: center; gap: 10px; color: #fff; font-size: 28px; font-weight: 900; text-shadow: 2px 2px 0 rgba(0,0,0,0.3); }
+        .ui-icon { font-size: 30px; }
+        #livesDisplay { font-size: 22px; letter-spacing: 3px; text-shadow: 2px 2px 0 rgba(0,0,0,0.5); }
+        #prestigeIndicator { font-size: 11px; white-space: nowrap; color: #c39bd3; font-weight: 900; text-shadow: 0 0 8px #9b59b6; letter-spacing: 1px; display: none; }
+        
+        #stageDisplay { position: absolute; top: 90px; width: 100%; text-align: center; color: #f1c40f; font-size: 20px; font-weight: 700; z-index: 10; pointer-events: none; letter-spacing: 2px; }
+        #stageDisplay.boss { color: #ff2b2b; text-shadow: 0 0 10px #ff0000; animation: pulseBoss 1s infinite alternate; }
+        #stageDisplay.weekly { color: #ff00ff; text-shadow: 0 0 15px #ff00ff; animation: pulseBoss 0.7s infinite alternate; }
+        @keyframes pulseBoss { from { transform: scale(1); } to { transform: scale(1.05); } }
+        #progressDisplay { position: absolute; top: 125px; width: 100%; text-align: center; color: #fff; font-size: 16px; font-weight: 900; z-index: 10; pointer-events: none; text-shadow: 0 2px 0 rgba(0,0,0,0.5); opacity: 0.85; }
+        #comboDisplay { position: absolute; top: 160px; width: 100%; text-align: center; color: #ff6b00; font-size: 22px; font-weight: 900; z-index: 10; pointer-events: none; text-shadow: 0 0 15px #ff6b00; opacity: 0; transition: opacity 0.3s; }
+        #comboDisplay.active { opacity: 1; animation: combopulse 0.5s infinite alternate; }
+        @keyframes combopulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+        
+        .screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; z-index: 20; opacity: 0; visibility: hidden; pointer-events: none; transition: opacity 0.3s ease, visibility 0.3s; padding: 20px; overflow-y: auto; }
+        .screen.active { opacity: 1; visibility: visible; pointer-events: auto; }
+        
+        .title-text { font-size: 44px; font-weight: 900; color: #e74c3c; text-shadow: 0 5px 0 #c0392b; margin-bottom: 15px; text-transform: uppercase; text-align: center; }
+        .btn { padding: 12px 30px; font-size: 16px; font-weight: 900; background: #2ecc71; color: white; border: none; border-radius: 10px; cursor: pointer; box-shadow: 0 5px 0 #27ae60; transition: transform 0.1s, box-shadow 0.1s; text-transform: uppercase; font-family: 'Montserrat', sans-serif; margin-bottom: 10px; min-width: 200px; position: relative; }
+        .btn:active { transform: translateY(5px); box-shadow: 0 0 0 #27ae60; }
+        .btn-red { background: #e74c3c; box-shadow: 0 5px 0 #c0392b; }
+        .btn-blue { background: #3498db; box-shadow: 0 5px 0 #2980b9; }
+        .btn-yellow { background: #f39c12; box-shadow: 0 5px 0 #d68910; }
+        .btn-purple { background: #9b59b6; box-shadow: 0 5px 0 #8e44ad; }
+        .btn-green { background: #27ae60; box-shadow: 0 5px 0 #1e8449; }
+        .btn-magenta { background: #ff00aa; box-shadow: 0 5px 0 #b30077; }
+        .btn .badge { position: absolute; top: -8px; right: -8px; background: #e74c3c; color: #fff; font-size: 12px; padding: 3px 8px; border-radius: 20px; min-width: 22px; text-align: center; }
+        
+        .hint-text { color: #bdc3c7; font-size: 13px; margin-top: 15px; text-align: center; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.5; } 50% { opacity: 1; } 100% { opacity: 0.5; } }
+        
+        #shopTabs { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; justify-content: center; }
+        .tab-btn { padding: 8px 14px; font-size: 13px; font-weight: bold; background: #0f3640; color: #bdc3c7; border: 2px solid #164c56; border-radius: 8px; cursor: pointer; font-family: 'Montserrat', sans-serif; }
+        .tab-btn.active { background: #f1c40f; color: #000; border-color: #f1c40f; }
+        #shopItems { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; width: 100%; max-width: 400px; margin-bottom: 15px; max-height: 45vh; overflow-y: auto; padding: 5px; }
+        .shop-card { background: #0f3640; padding: 8px; border-radius: 12px; text-align: center; border: 3px solid transparent; cursor: pointer; transition: 0.2s; }
+        .shop-card.selected { border-color: #2ecc71; box-shadow: 0 0 15px rgba(46,204,113,0.4); }
+        .shop-card.prestige-locked { border-color: #9b59b6; }
+        .shop-card.trophy-locked { border-color: #666; opacity: 0.5; }
+        .shop-card.trophy-owned { border-color: #f1c40f; box-shadow: 0 0 15px rgba(241,196,15,0.4); }
+        .shop-card .preview-canvas { display: block; margin: 0 auto 3px; }
+        .shop-card .item-name { font-weight: bold; font-size: 12px; }
+        .shop-card .item-status { font-size: 11px; }
+        
+        #streakDays { display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; margin-bottom: 20px; max-width: 360px; }
+        .streak-day { width: 45px; height: 65px; background: #0f3640; border-radius: 10px; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 2px solid #164c56; position: relative; }
+        .streak-day.claimed { background: #1e8449; border-color: #2ecc71; }
+        .streak-day.today { border-color: #f1c40f; box-shadow: 0 0 15px #f1c40f; animation: pulseToday 0.8s infinite alternate; }
+        @keyframes pulseToday { from { transform: scale(1); } to { transform: scale(1.08); } }
+        .streak-day .day-num { font-size: 10px; color: #bdc3c7; font-weight: 700; }
+        .streak-day .day-reward { font-size: 14px; font-weight: 900; color: #f1c40f; }
+        .streak-day .day-icon { font-size: 18px; }
+        .streak-day.claimed .day-reward { color: #fff; }
+        
+        .quest-item { background: #0f3640; padding: 12px; border-radius: 10px; margin-bottom: 8px; width: 100%; max-width: 360px; display: flex; justify-content: space-between; align-items: center; }
+        .quest-info { flex: 1; }
+        .quest-desc { font-size: 14px; font-weight: 700; margin-bottom: 3px; }
+        .quest-progress { font-size: 12px; color: #bdc3c7; }
+        .quest-reward { background: #f1c40f; color: #000; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 900; margin-left: 10px; cursor: pointer; }
+        .quest-reward.claimed { background: #27ae60; color: #fff; cursor: default; }
+        .quest-item.completed { opacity: 0.7; }
+        
+        .ach-item { background: #0f3640; padding: 10px 12px; border-radius: 10px; margin-bottom: 6px; width: 100%; max-width: 360px; display: flex; align-items: center; gap: 10px; }
+        .ach-icon { font-size: 24px; }
+        .ach-info { flex: 1; }
+        .ach-desc { font-size: 13px; font-weight: 700; }
+        .ach-progress { font-size: 11px; color: #f1c40f; margin-top: 2px; }
+        .ach-reward { font-size: 13px; color: #f1c40f; font-weight: 900; }
+        .ach-item.unlocked { background: #1e8449; }
+        .ach-item.unlocked .ach-reward { color: #fff; }
+        
+        .perk-list { width: 100%; max-width: 360px; max-height: 40vh; overflow-y: auto; margin-bottom: 15px; }
+        .perk-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #0f3640; border-radius: 8px; margin-bottom: 5px; border: 1px solid transparent; }
+        .perk-row.active { border-color: #2ecc71; background: #1e8449; }
+        .perk-row.next { border-color: #f1c40f; box-shadow: 0 0 10px rgba(241,196,15,0.3); }
+        .perk-row.locked { opacity: 0.55; }
+        .perk-level { font-size: 12px; font-weight: 900; color: #c39bd3; min-width: 28px; }
+        .perk-icon { font-size: 18px; min-width: 24px; text-align: center; }
+        .perk-text { font-size: 12px; font-weight: 700; flex: 1; line-height: 1.3; }
+        .perk-row.active .perk-text, .perk-row.active .perk-level { color: #fff; }
+        
+        #prestigeScreen { justify-content: flex-start; padding-top: 25px; }
+        #prestigePerkList { max-height: 25vh; }
+        
+        #weeklyScreen { background: rgba(15, 5, 20, 0.97); justify-content: flex-start; padding-top: 25px; }
+        .weekly-boss-card { width: 100%; max-width: 340px; background: linear-gradient(135deg, #1a0033, #330055); border: 3px solid #ff00aa; border-radius: 16px; padding: 16px; margin-bottom: 15px; text-align: center; box-shadow: 0 0 30px rgba(255,0,170,0.4); }
+        .weekly-boss-icon { font-size: 64px; margin-bottom: 8px; filter: drop-shadow(0 0 15px #ff00aa); }
+        .weekly-boss-name { font-size: 22px; color: #ff00ff; font-weight: 900; margin-bottom: 6px; text-shadow: 0 0 10px #ff00aa; }
+        .weekly-boss-desc { font-size: 13px; color: #ddd; line-height: 1.5; margin-bottom: 12px; }
+        .weekly-boss-reward { background: #f1c40f; color: #000; padding: 8px 14px; border-radius: 8px; font-size: 13px; font-weight: 900; display: inline-block; }
+        .weekly-boss-timer { font-size: 11px; color: #f1c40f; margin-top: 10px; }
+        .weekly-boss-trophy { font-size: 11px; color: #ff00ff; margin-top: 6px; }
+        
+        #toast { position: absolute; top: 20%; background: rgba(0,0,0,0.9); color: white; padding: 12px 24px; border-radius: 30px; font-weight: bold; font-size: 15px; display: none; z-index: 100; pointer-events: none; text-align: center; border: 1px solid rgba(255,255,255,0.3); max-width: 80%; }
+        #adScreen { background: #000; z-index: 50; }
+        .ad-spinner { width: 60px; height: 60px; border: 6px solid rgba(255,255,255,0.2); border-top-color: #2ecc71; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 20px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .high-score { font-size: 16px; color: #f1c40f; margin-bottom: 15px; font-weight: 700; text-shadow: 0 2px 0 #000; text-align: center; }
+        .prestige-badge { font-size: 16px; color: #c39bd3; margin-bottom: 10px; font-weight: 900; text-shadow: 0 0 10px #9b59b6; text-align: center; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+    <div id="ui">
+        <div class="ui-block"><span id="scoreDisplay">0</span></div>
+        <div style="display:flex; flex-direction:column; align-items:flex-end; gap:6px;">
+            <div class="ui-block"><span id="appleDisplay">0</span> <span class="ui-icon">🍎</span></div>
+            <div id="livesDisplay">❤️❤️❤️</div>
+            <div id="prestigeIndicator">⭐ ×1.0</div>
+        </div>
+    </div>
+    <div id="stageDisplay">STAGE 1</div>
+    <div id="progressDisplay"><span id="progressText">0/5</span></div>
+    <div id="comboDisplay"></div>
+    <div id="toast">Уведомление</div>
+    <canvas id="gameCanvas"></canvas>
+
+    <div id="startScreen" class="screen active">
+        <h1 style="font-size: 54px; color: #fff; text-shadow: 0 5px 0 #000; margin-bottom: 15px; text-align: center; line-height: 1;">KNIFE<br><span style="color: #f1c40f;">HIT</span></h1>
+        <div class="prestige-badge" id="prestigeBadge" style="display:none;">⭐ PRESTIGE <span id="menuPrestigeLevel">0</span> · +<span id="menuPrestigeBonus">0</span>% 🍎</div>
+        <div class="high-score">🏆 РЕКОРД: <span id="menuHighScore">0</span></div>
+        <button class="btn" onclick="startGame()">PLAY ▶</button>
+        <button class="btn btn-magenta" id="weeklyBtn" onclick="openWeekly()" style="display:none;">🔥 БОСС НЕДЕЛИ</button>
+        <button class="btn btn-yellow" onclick="openShop()">МАГАЗИН 🍎</button>
+        <button class="btn btn-purple" onclick="openQuests()">ЗАДАНИЯ 📜 <span id="questBadge" class="badge" style="display:none;">0</span></button>
+        <button class="btn btn-blue" onclick="openAchievements()">ДОСТИЖЕНИЯ 🏆</button>
+        <button class="btn btn-purple" id="prestigeBtn" onclick="openPrestige()" style="display:none; background: #8e44ad; box-shadow: 0 5px 0 #6c3483;">⭐ ПЕРЕРОЖДЕНИЕ</button>
+        <button class="btn btn-purple" id="perksBtn" onclick="openPerks()" style="display:none; background: #6c3483; box-shadow: 0 5px 0 #512e5f; font-size: 13px;">⭐ ПЕРКИ PRESTIGE</button>
+    </div>
+
+    <div id="shopScreen" class="screen" style="background: rgba(22, 76, 86, 0.98);">
+        <h1 style="color: #f1c40f; font-size: 32px; margin-bottom: 8px;">SHOP</h1>
+        <p style="font-size: 20px; margin-bottom: 8px;">🍎 <span id="shopAppleDisplay">0</span></p>
+        <button class="btn btn-purple" style="min-width: 200px; font-size: 12px; padding: 8px; margin-bottom: 10px;" onclick="watchAdForApples()">🎬 +10 🍎 за рекламу</button>
+        <div id="shopTabs">
+            <button class="tab-btn active" onclick="switchTab('knives')">Ножи 🔪</button>
+            <button class="tab-btn" onclick="switchTab('logs')">Бревна 🪵</button>
+            <button class="tab-btn" onclick="switchTab('trophies')">Трофеи 🏆</button>
+        </div>
+        <div id="shopItems"></div>
+        <button class="btn btn-red" onclick="closeScreen('shopScreen')">ЗАКРЫТЬ</button>
+    </div>
+
+    <div id="questsScreen" class="screen" style="background: rgba(22, 76, 86, 0.98);">
+        <h1 style="color: #f1c40f; font-size: 32px; margin-bottom: 15px;">📜 ЗАДАНИЯ</h1>
+        <p style="font-size: 14px; color: #bdc3c7; margin-bottom: 15px; text-align: center;">Обновляются каждый день в 00:00</p>
+        <div id="questsList" style="width: 100%; max-width: 360px;"></div>
+        <button id="claimAllQuestsBtn" class="btn btn-green" style="margin-top: 15px; display: none;" onclick="claimAllQuests()">🎁 ЗАБРАТЬ ВСЕ (+30 🍎)</button>
+        <button class="btn btn-red" onclick="closeScreen('questsScreen')">ЗАКРЫТЬ</button>
+    </div>
+
+    <div id="achScreen" class="screen" style="background: rgba(22, 76, 86, 0.98);">
+        <h1 style="color: #f1c40f; font-size: 32px; margin-bottom: 15px;">🏆 ДОСТИЖЕНИЯ</h1>
+        <div id="achList" style="width: 100%; max-width: 360px;"></div>
+        <button class="btn btn-red" style="margin-top: 15px;" onclick="closeScreen('achScreen')">ЗАКРЫТЬ</button>
+    </div>
+
+    <div id="perksScreen" class="screen" style="background: rgba(30, 5, 50, 0.98);">
+        <h1 style="color: #c39bd3; font-size: 30px; margin-bottom: 10px; text-shadow: 0 0 20px #9b59b6;">⭐ ПЕРКИ PRESTIGE</h1>
+        <p style="font-size: 14px; color: #bdc3c7; margin-bottom: 15px; text-align: center;">Каждый уровень — новая механика</p>
+        <div id="perksList" class="perk-list"></div>
+        <button class="btn btn-red" onclick="closeScreen('perksScreen')">ЗАКРЫТЬ</button>
+    </div>
+
+    <div id="prestigeScreen" class="screen" style="background: rgba(30, 5, 50, 0.98);">
+        <h1 style="color: #c39bd3; font-size: 32px; margin-bottom: 15px; text-shadow: 0 0 20px #9b59b6;">⭐ ПЕРЕРОЖДЕНИЕ</h1>
+        <div style="max-width: 360px; width: 100%; text-align: center; margin-bottom: 10px; padding: 14px; background: #0f3640; border-radius: 14px; border: 2px solid #9b59b6;">
+            <p style="font-size: 18px; margin-bottom: 8px;">Уровень: <b style="color: #f1c40f;">P<span id="pCurrentLevel">0</span> → P<span id="pNextLevel">1</span></b></p>
+            <p style="font-size: 20px; color: #2ecc71; margin-bottom: 10px; font-weight: 900;">+<span id="pBonus">10</span>% 🍎</p>
+            <div style="font-size: 13px; color: #bdc3c7; line-height: 1.6; text-align: left; padding: 8px 0; border-top: 1px solid #164c56;">
+                <div>❌ Сброс: стадии, счёт, макс. стадия</div>
+                <div>✅ Остаётся: 🍎, скины, ачивки, streak</div>
+                <div style="margin-top: 8px; color: #f39c12;" id="pExtraReward"></div>
+            </div>
+        </div>
+        <div class="perk-list" id="prestigePerkList"></div>
+        <button class="btn btn-purple" onclick="confirmPrestige()">⭐ ПЕРЕРОДИТЬСЯ</button>
+        <button class="btn btn-red" onclick="closeScreen('prestigeScreen')">ОТМЕНА</button>
+    </div>
+
+    <div id="weeklyScreen" class="screen">
+        <h1 style="color: #ff00ff; font-size: 30px; margin-bottom: 10px; text-shadow: 0 0 20px #ff00aa;">🔥 БОСС НЕДЕЛИ</h1>
+        <div id="weeklyBossCard" class="weekly-boss-card"></div>
+        <button class="btn btn-magenta" onclick="startWeeklyBoss()" id="weeklyStartBtn">🔥 НАЧАТЬ БОЙ</button>
+        <button class="btn btn-red" onclick="closeScreen('weeklyScreen')">ЗАКРЫТЬ</button>
+    </div>
+
+    <div id="weeklyVictoryScreen" class="screen" style="background: rgba(30, 0, 40, 0.98);">
+        <h1 style="color: #ff00ff; font-size: 42px; margin-bottom: 15px; text-shadow: 0 0 25px #ff00aa;">🏆 ПОБЕДА!</h1>
+        <div class="weekly-boss-card" style="border-color: #f1c40f; box-shadow: 0 0 40px rgba(241,196,15,0.6);">
+            <div class="weekly-boss-icon" id="victoryBossIcon" style="font-size: 80px;">🏆</div>
+            <div class="weekly-boss-name" id="victoryBossName" style="color: #f1c40f;">BOSS</div>
+            <p style="font-size: 16px; color: #fff; margin-top: 8px;">+<span id="weeklyVictoryReward">50</span> 🍎</p>
+            <p style="font-size: 13px; color: #ff00ff; margin-top: 6px;">🏆 Трофей-скин разблокирован навсегда!</p>
+        </div>
+        <button class="btn btn-magenta" onclick="closeScreen('weeklyVictoryScreen'); showStartMenu();">ОТЛИЧНО!</button>
+    </div>
+
+    <div id="streakModal" class="screen">
+        <h1 style="color: #f1c40f; font-size: 36px; margin-bottom: 10px;">🔥 СЕРИЯ ВХОДОВ</h1>
+        <p style="font-size: 16px; color: #fff; margin-bottom: 15px;">Не пропускай дни!</p>
+        <div id="streakDays"></div>
+        <button id="claimStreakBtn" class="btn btn-green" onclick="claimStreak()">🎁 ЗАБРАТЬ</button>
+    </div>
+
+    <div id="gameOverScreen" class="screen">
+        <h1 class="title-text">GAME OVER</h1>
+        <p style="font-size: 22px; margin-bottom: 8px;">Твой счёт: <span id="finalScore" style="color: #f1c40f;">0</span></p>
+        <p style="font-size: 14px; margin-bottom: 25px; color: #bdc3c7;">🏆 Рекорд: <span id="endHighScore">0</span></p>
+        <button id="continueBtn" class="btn btn-purple" onclick="continueGame()">▶ СМОТРЕТЬ РЕКЛАМУ<br><span style="font-size: 12px;">(+2 ❤️ +2 🔪)</span></button>
+        <button class="btn btn-red" onclick="restartGame()">ЗАНОВО</button>
+        <button class="btn btn-blue" onclick="showStartMenu()">В МЕНЮ</button>
+    </div>
+
+    <div id="stageClearScreen" class="screen">
+        <h1 class="title-text" style="color: #2ecc71; text-shadow: 0 5px 0 #27ae60;">STAGE CLEAR!</h1>
+        <p style="font-size: 18px; margin-bottom: 12px;">Бонус: +<span id="stageBonusText">10</span> 🍎</p>
+        <button id="doubleRewardBtn" class="btn btn-purple" onclick="doubleStageReward()">🎬 УДВОИТЬ (+10 🍎)</button>
+        <button class="btn" onclick="nextStage()">ДАЛЬШЕ ▶</button>
+    </div>
+
+    <div id="adScreen" class="screen">
+        <div class="ad-spinner"></div>
+        <h1 style="color: #fff; font-size: 20px; letter-spacing: 2px;">РЕКЛАМА</h1>
+        <p style="color: #bdc3c7; margin-top: 15px; font-size: 14px;">Подождите <span id="adTimer" style="color: #f1c40f; font-weight: bold;">3</span> сек...</p>
+    </div>
+
+<script>
+// ============= БЕЗОПАСНАЯ ИНИЦИАЛИЗАЦИЯ =============
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const scoreDisplay = document.getElementById('scoreDisplay');
+const appleDisplay = document.getElementById('appleDisplay');
+const stageDisplay = document.getElementById('stageDisplay');
+const progressText = document.getElementById('progressText');
+const livesDisplay = document.getElementById('livesDisplay');
+const comboDisplay = document.getElementById('comboDisplay');
+const prestigeIndicator = document.getElementById('prestigeIndicator');
+const startScreen = document.getElementById('startScreen');
+const shopScreen = document.getElementById('shopScreen');
+const gameOverScreen = document.getElementById('gameOverScreen');
+const stageClearScreen = document.getElementById('stageClearScreen');
+const adScreen = document.getElementById('adScreen');
+const toastEl = document.getElementById('toast');
+const questsScreen = document.getElementById('questsScreen');
+const achScreen = document.getElementById('achScreen');
+const streakModal = document.getElementById('streakModal');
+const prestigeScreen = document.getElementById('prestigeScreen');
+const perksScreen = document.getElementById('perksScreen');
+const weeklyScreen = document.getElementById('weeklyScreen');
+const weeklyVictoryScreen = document.getElementById('weeklyVictoryScreen');
+
+// Очистка памяти от старых багов
+try {
+    const keysToCheck = ['knifeHitSkins', 'knifeHitLogs', 'knifeHitTrophies'];
+    keysToCheck.forEach(k => {
+        let val = localStorage.getItem(k);
+        if (val) {
+            try {
+                let parsed = JSON.parse(val);
+                if (!Array.isArray(parsed)) localStorage.removeItem(k);
+            } catch(e) { localStorage.removeItem(k); }
+        }
+    });
+} catch(e) { console.warn("Storage cleanup error", e); }
+
+// ============= СКИНЫ =============
+const ALL_SKINS = [
+    { id: 'default', name: 'Classic', price: 0, shape: 'classic', handleColor: '#d35400', bladeColor: '#ecf0f1' },
+    { id: 'toxic', name: 'Toxic', price: 100, shape: 'toxic', handleColor: '#27ae60', bladeColor: '#2ecc71', glow: '#2ecc71' },
+    { id: 'ice', name: 'Ice', price: 200, shape: 'ice', handleColor: '#2980b9', bladeColor: '#a2d9ce', glow: '#a2d9ce' },
+    { id: 'gold', name: 'Gold', price: 400, shape: 'gold', handleColor: '#f39c12', bladeColor: '#f1c40f', glow: '#f1c40f' },
+    { id: 'katana', name: 'Katana', price: 800, shape: 'katana', handleColor: '#1a1a1a', bladeColor: '#e8e8e8' },
+    { id: 'cleaver', name: 'Cleaver', price: 1200, shape: 'cleaver', handleColor: '#4a2c1a', bladeColor: '#95a5a6' },
+    { id: 'kunai', name: 'Kunai', price: 1600, shape: 'kunai', handleColor: '#555', bladeColor: '#bdc3c7' },
+    { id: 'diamond', name: 'Diamond', price: 2000, shape: 'diamond', handleColor: '#34495e', bladeColor: '#4fc3f7', glow: '#4fc3f7' },
+    { id: 'cyber', name: 'Cyberpunk', price: 2500, shape: 'cyber', handleColor: '#111', bladeColor: '#ff00ff', glow: '#ff00ff' },
+    { id: 'flame', name: 'Flame', price: 3000, shape: 'flame', handleColor: '#3a0000', bladeColor: '#ff6b00', glow: '#ff6b00' },
+    { id: 'galaxy', name: 'Galaxy', price: 3500, shape: 'galaxy', handleColor: '#1a0033', bladeColor: '#8e44ad', glow: '#8e44ad' },
+    { id: 'rainbow', name: 'Rainbow', price: 4000, shape: 'rainbow', handleColor: '#ff0066', bladeColor: '#00ffcc', glow: '#ffffff' },
+    { id: 'dragon', name: 'Dragon', price: 4500, shape: 'dragon', handleColor: '#8b0000', bladeColor: '#ff4500', glow: '#ff4500' },
+    { id: 'void', name: 'Void', price: 5200, shape: 'void', handleColor: '#000', bladeColor: '#6a00ff', glow: '#6a00ff' },
+    { id: 'prestigegold', name: 'Prestige Gold', price: 0, shape: 'gold', handleColor: '#6c3483', bladeColor: '#ffd700', glow: '#ffd700', prestigeReq: 5 },
+    { id: 'beyond', name: 'Beyond', price: 0, shape: 'galaxy', handleColor: '#2c003e', bladeColor: '#ff00ff', glow: '#ff00ff', prestigeReq: 10 }
+];
+const ALL_LOGS = [
+    { id: 'wood', name: 'Wood', price: 0, shape: 'wood', base: '#d4a373', ring: '#b5835a', bark: '#8B4513', bossBase: '#8B0000', bossRing: '#5a0000', bossBark: '#3a0000' },
+    { id: 'melon', name: 'Melon', price: 200, shape: 'watermelon', base: '#27ae60', ring: '#e74c3c', bark: '#1e8449', bossBase: '#16a085', bossRing: '#c0392b', bossBark: '#0e6655' },
+    { id: 'target', name: 'Target', price: 400, shape: 'target', base: '#ecf0f1', ring: '#e74c3c', bark: '#2c3e50', bossBase: '#e74c3c', bossRing: '#fff', bossBark: '#000' },
+    { id: 'gear', name: 'Gear', price: 800, shape: 'gear', base: '#95a5a6', ring: '#7f8c8d', bark: '#2c3e50', bossBase: '#c0392b', bossRing: '#e74c3c', bossBark: '#3a1c1c' },
+    { id: 'ice', name: 'Crystal', price: 1200, shape: 'ice', base: '#a2d9ce', ring: '#76d7c4', bark: '#48c9b0', bossBase: '#5dade2', bossRing: '#85c1e9', bossBark: '#1b4f72' },
+    { id: 'cyber', name: 'Cyber', price: 1600, shape: 'cyber', base: '#0a0a1a', ring: '#ff00ff', bark: '#00ffff', bossBase: '#1a001a', bossRing: '#ff0080', bossBark: '#00ffff' },
+    { id: 'lava', name: 'Lava', price: 2000, shape: 'lava', base: '#e67e22', ring: '#d35400', bark: '#a04000', bossBase: '#c0392b', bossRing: '#96281b', bossBark: '#641e16' },
+    { id: 'galaxy', name: 'Galaxy', price: 2400, shape: 'galaxy', base: '#1a0033', ring: '#8e44ad', bark: '#4a0080', bossBase: '#000', bossRing: '#ff00ff', bossBark: '#6a00ff' },
+    { id: 'rainbow', name: 'Rainbow', price: 2400, shape: 'rainbow', base: '#ff0066', ring: '#ffcc00', bark: '#00ffcc', bossBase: '#ff0066', bossRing: '#00ffcc', bossBark: '#ffcc00' }
+];
+const WEEKLY_BOSSES = [
+    { id: 'pumpkin', name: 'Pumpkin King', icon: '🎃', desc: 'Золотые яблоки падают вдвое чаще. Тыква не прощает промахов.',
+      targetScore: 15, knivesExtra: 8, rotMult: 1.0, goldenBonus: 0.35,
+      trophySkin: { id: 'trophy_pumpkin', name: 'Pumpkin Slayer', shape: 'flame', handleColor: '#3a1a00', bladeColor: '#ff8800', glow: '#ff8800' },
+      bossBase: '#ff8800', bossRing: '#ffaa33', bossBark: '#3a1a00' },
+    { id: 'reaper', name: 'Reaper', icon: '💀', desc: 'Крутится быстрее обычного. 12 целей, но каждая — на счету.',
+      targetScore: 12, knivesExtra: 6, rotMult: 1.4, goldenBonus: 0,
+      trophySkin: { id: 'trophy_reaper', name: 'Reaper', shape: 'cleaver', handleColor: '#000', bladeColor: '#aaaaaa', glow: '#aa0000' },
+      bossBase: '#1a0000', bossRing: '#aa0000', bossBark: '#000' },
+    { id: 'storm', name: 'Storm', icon: '⚡', desc: 'Скорость меняется рывками. Держи ритм или проиграешь.',
+      targetScore: 14, knivesExtra: 8, rotMult: 1.0, goldenBonus: 0.1, storm: true,
+      trophySkin: { id: 'trophy_storm', name: 'Storm Blade', shape: 'cyber', handleColor: '#003a5a', bladeColor: '#00ccff', glow: '#00ffff' },
+      bossBase: '#001a33', bossRing: '#00ccff', bossBark: '#003a5a' },
+    { id: 'jester', name: 'Jester', icon: '🃏', desc: 'Реверс вращения каждые 1.5 сек. Безумие — это весело.',
+      targetScore: 10, knivesExtra: 5, rotMult: 1.1, goldenBonus: 0.05, jester: true,
+      trophySkin: { id: 'trophy_jester', name: "Jester's Edge", shape: 'rainbow', handleColor: '#ff00aa', bladeColor: '#00ffaa', glow: '#ffffff' },
+      bossBase: '#aa0066', bossRing: '#ff00aa', bossBark: '#330033' }
+];
+
+// ============= БЕЗОПАСНАЯ ЗАГРУЗКА =============
+let unlockedSkins = ['default'];
+let unlockedLogs = ['wood'];
+let unlockedTrophies = [];
+let selectedSkinId = 'default';
+let selectedLogId = 'wood';
+let cachedSkin = ALL_SKINS[0];
+let cachedLog = ALL_LOGS[0];
+
+try {
+    let sk = JSON.parse(localStorage.getItem('knifeHitSkins'));
+    if (Array.isArray(sk)) unlockedSkins = sk.filter(id => ALL_SKINS.some(s => s.id === id));
+    if (!unlockedSkins.includes('default')) unlockedSkins.push('default');
+    
+    let lg = JSON.parse(localStorage.getItem('knifeHitLogs'));
+    if (Array.isArray(lg)) unlockedLogs = lg.filter(id => ALL_LOGS.some(s => s.id === id));
+    if (!unlockedLogs.includes('wood')) unlockedLogs.push('wood');
+
+    let tr = JSON.parse(localStorage.getItem('knifeHitTrophies'));
+    if (Array.isArray(tr)) unlockedTrophies = tr;
+    
+    selectedSkinId = localStorage.getItem('knifeHitSelectedSkin') || 'default';
+    selectedLogId = localStorage.getItem('knifeHitSelectedLog') || 'wood';
+} catch(e) { console.warn("Load error, resetting defaults", e); }
+
+function getCurrentSkin() {
+    try {
+        let skin = ALL_SKINS.find(s => s.id === selectedSkinId);
+        if (skin) return skin;
+        for (let boss of WEEKLY_BOSSES) {
+            if (boss.trophySkin.id === selectedSkinId) return boss.trophySkin;
+        }
+    } catch (e) { console.warn("Skin error", e); }
+    return ALL_SKINS[0];
+}
+function getCurrentLog() { 
+    try {
+        let skin = ALL_LOGS.find(s => s.id === selectedLogId); 
+        if (skin) return skin;
+    } catch (e) { console.warn("Log error", e); }
+    return ALL_LOGS[0]; 
+}
+
+// ============= МИР =============
+let baseSize, baseCenterX, baseCenterY, targetRadius, knifeLength, knifeSpeed, knifeStartY;
+let targetOffsetX = 0, targetOffsetY = 0, swayTime = 0, swayAmplitudeX = 0, swayAmplitudeY = 0;
+let isShattered = false, isBossLevel = false;
+let isWeeklyBossMode = false;
+let currentWeeklyBossConfig = null;
+let stormTimer = 0;
+let jesterTimer = 0;
+const BOSS_REVERSE_INTERVAL = 3.5;
+let bossReverseTimer = 0;
+let flashAlpha = 0, flashColor = '255,255,255';
+let timeScale = 1;
+let crackAlpha = 0, crackLines = [];
+let bgStars = [];
+
+function updateDimensions() {
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    baseSize = Math.min(canvas.width, canvas.height);
+    baseCenterX = canvas.width / 2; baseCenterY = canvas.height / 2;
+    targetRadius = baseSize * 0.22; knifeLength = targetRadius * 0.85;
+    knifeSpeed = baseSize * 0.035; knifeStartY = canvas.height - 100;
+}
+updateDimensions();
+
+function initBgStars() {
+    bgStars = [];
+    for (let i = 0; i < 60; i++) bgStars.push({ x: Math.random() * canvas.width, y: Math.random() * canvas.height, size: Math.random() * 2 + 0.5, speed: Math.random() * 0.3 + 0.1, alpha: Math.random() * 0.5 + 0.2 });
+}
+initBgStars();
+
+let gameState = 'menu';
+let currentShopTab = 'knives';
+let totalScore = 0, stageScore = 0, knivesLeft = 0;
+let highScore = parseInt(localStorage.getItem('knifeHitHighScore') || '0') || 0;
+let totalApples = parseInt(localStorage.getItem('knifeHitApples') || '0') || 0;
+let stage = 1, targetScore = 5;
+let targetAngle = 0, rotationSpeed = 0.02;
+let knives = [], flyingKnife = null, stuckApples = [], particles = [], floatingTexts = [];
+let screenShake = 0;
+let lastThrowTime = 0, hasContinued = false, isAdPlaying = false;
+let stageClearDoubled = false;
+let comboStreak = 0;
+
+let prestigeLevel = parseInt(localStorage.getItem('knifeHitPrestige') || '0') || 0;
+let maxStageReached = parseInt(localStorage.getItem('knifeHitMaxStage') || '1') || 1;
+
+function getAppleMultiplier() {
+    let mult = 1 + prestigeLevel * 0.1;
+    if (prestigeLevel >= 3) mult += 0.1;
+    return mult;
+}
+function getExtraLives() { return prestigeLevel >= 2 ? 1 : 0; }
+function getRotationBonus() { return prestigeLevel >= 3 ? 1.05 : 1.0; }
+function getStartingKnivesBonus() { return prestigeLevel >= 6 ? 2 : (prestigeLevel >= 4 ? 1 : 0); }
+function getGoldenChance() {
+    let c = 0.15;
+    if (prestigeLevel >= 5) c += 0.05;
+    if (prestigeLevel >= 8) c += 0.10;
+    return c;
+}
+function getComboThreshold() { return prestigeLevel >= 7 ? 2 : 3; }
+function getStageClearMult() { return prestigeLevel >= 9 ? 2 : 1; }
+
+let MAX_LIVES = 3 + getExtraLives();
+let lives = MAX_LIVES;
+
+function updateLivesUI() {
+    let hearts = '';
+    for (let i = 0; i < MAX_LIVES; i++) hearts += i < lives ? '❤️' : '🖤';
+    livesDisplay.innerText = hearts;
+}
+function updateComboUI() {
+    const threshold = getComboThreshold();
+    if (comboStreak >= threshold) { comboDisplay.innerText = `🔥 COMBO x${comboStreak} 🔥`; comboDisplay.classList.add('active'); }
+    else comboDisplay.classList.remove('active');
+}
+function showToast(text) {
+    if (!toastEl) return;
+    toastEl.innerText = text;
+    toastEl.style.display = 'block';
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => { toastEl.style.display = 'none'; }, 2200);
+}
+
+let audioCtx = null;
+function initAudio() {
+    try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+    } catch(e) {}
+}
+function playSound(type) {
+    if (!audioCtx) return;
+    try {
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        const config = {
+            throw: { type: 'triangle', f1: 400, f2: 100, dur: 0.1, vol: 0.1 },
+            hit: { type: 'square', f1: 150, f2: 150, dur: 0.15, vol: 0.3 },
+            apple: { type: 'sine', f1: 800, f2: 1200, dur: 0.1, vol: 0.2 },
+            golden: { type: 'sine', f1: 1200, f2: 1600, dur: 0.3, vol: 0.3 },
+            combo: { type: 'sine', f1: 600, f2: 1800, dur: 0.2, vol: 0.25 },
+            hurt: { type: 'square', f1: 250, f2: 80, dur: 0.3, vol: 0.3 },
+            fail: { type: 'sawtooth', f1: 200, f2: 50, dur: 0.4, vol: 0.3 },
+            reverse: { type: 'sawtooth', f1: 1200, f2: 300, dur: 0.18, vol: 0.15 },
+            trophy: { type: 'sine', f1: 800, f2: 2000, dur: 0.6, vol: 0.35 }
+        }[type];
+        if (!config) return;
+        osc.type = config.type;
+        osc.frequency.setValueAtTime(config.f1, now);
+        osc.frequency.exponentialRampToValueAtTime(config.f2, now + config.dur);
+        gain.gain.setValueAtTime(config.vol, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + config.dur);
+        osc.start(now); osc.stop(now + config.dur);
+        if (type === 'hit' && navigator.vibrate) navigator.vibrate(30);
+    } catch(e) {}
+}
+
+function initLevel() {
+    stageScore = 0; isShattered = false; hasContinued = false; isAdPlaying = false;
+    stageClearDoubled = false; comboStreak = 0;
+    timeScale = 1;
+    knives = []; stuckApples = []; flyingKnife = null; particles = []; floatingTexts = [];
+    screenShake = 0; flashAlpha = 0; swayTime = 0; targetOffsetX = 0; targetOffsetY = 0;
+    bossReverseTimer = 0; crackAlpha = 0; crackLines = [];
+    stormTimer = 0; jesterTimer = 0;
+    isBossLevel = (stage % 5 === 0) && !isWeeklyBossMode;
+    
+    const speedMult = getRotationBonus();
+    const knivesBonus = getStartingKnivesBonus();
+    
+    if (isWeeklyBossMode && currentWeeklyBossConfig) {
+        const wb = currentWeeklyBossConfig;
+        targetScore = wb.targetScore;
+        knivesLeft = wb.targetScore + wb.knivesExtra + knivesBonus;
+        rotationSpeed = (0.03 + (stage * 0.005)) * wb.rotMult * speedMult;
+        swayAmplitudeX = baseSize * 0.06; swayAmplitudeY = baseSize * 0.03;
+        document.body.classList.add('weekly-mode');
+        document.body.classList.remove('boss-mode');
+        const goldenChance = getGoldenChance() + (wb.goldenBonus || 0);
+        stuckApples.push({ angle: Math.random() * Math.PI * 2, active: true, golden: Math.random() < goldenChance });
+        if (targetScore > 8) stuckApples.push({ angle: Math.random() * Math.PI * 2, active: true, golden: false });
+    } else if (isBossLevel) {
+        targetScore = 8 + Math.floor(stage / 2);
+        knivesLeft = targetScore + 5 + knivesBonus;
+        rotationSpeed = (0.03 + (stage * 0.005)) * speedMult;
+        swayAmplitudeX = baseSize * 0.08; swayAmplitudeY = baseSize * 0.04;
+        document.body.classList.add('boss-mode');
+        document.body.classList.remove('weekly-mode');
+        const goldenChance = getGoldenChance() + 0.10;
+        stuckApples.push({ angle: Math.random() * Math.PI * 2, active: true, golden: Math.random() < goldenChance });
+        stuckApples.push({ angle: Math.random() * Math.PI * 2, active: true, golden: false });
+    } else {
+        targetScore = 4 + stage * 2;
+        knivesLeft = targetScore + 2 + knivesBonus;
+        rotationSpeed = (0.02 + (stage * 0.005)) * speedMult;
+        swayAmplitudeX = stage >= 4 ? baseSize * 0.05 : 0;
+        swayAmplitudeY = stage >= 7 ? baseSize * 0.05 : 0;
+        document.body.classList.remove('boss-mode');
+        document.body.classList.remove('weekly-mode');
+        stuckApples.push({ angle: Math.random() * Math.PI * 2, active: true, golden: Math.random() < getGoldenChance() });
+        if (stage > 1) stuckApples.push({ angle: Math.random() * Math.PI * 2, active: true, golden: false });
+    }
+    updateUI(); updateLivesUI(); updateComboUI();
+}
+
+function updateUI() {
+    if (scoreDisplay) scoreDisplay.innerText = totalScore;
+    if (appleDisplay) appleDisplay.innerText = totalApples;
+    if (document.getElementById('menuHighScore')) document.getElementById('menuHighScore').innerText = highScore;
+    if (progressText) progressText.innerText = `${stageScore}/${targetScore}  🔪 ${knivesLeft}`;
+    
+    if (isWeeklyBossMode && currentWeeklyBossConfig) {
+        stageDisplay.innerText = `🔥 ${currentWeeklyBossConfig.name.toUpperCase()}`;
+        stageDisplay.classList.add('weekly');
+        stageDisplay.classList.remove('boss');
+    } else if (isBossLevel) {
+        stageDisplay.innerText = `👑 BOSS STAGE ${stage}`;
+        stageDisplay.classList.add('boss');
+        stageDisplay.classList.remove('weekly');
+    } else {
+        stageDisplay.innerText = `STAGE ${stage}`;
+        stageDisplay.classList.remove('boss');
+        stageDisplay.classList.remove('weekly');
+    }
+    
+    if (prestigeLevel > 0) {
+        if(prestigeIndicator) {
+            prestigeIndicator.style.display = 'block';
+            prestigeIndicator.innerText = `⭐ P${prestigeLevel} ×${getAppleMultiplier().toFixed(1)}`;
+        }
+    } else if(prestigeIndicator) {
+        prestigeIndicator.style.display = 'none';
+    }
+    
+    const badge = document.getElementById('prestigeBadge');
+    if (badge) {
+        if (prestigeLevel > 0) {
+            badge.style.display = 'block';
+            document.getElementById('menuPrestigeLevel').innerText = prestigeLevel;
+            document.getElementById('menuPrestigeBonus').innerText = Math.round((getAppleMultiplier() * 100) - 100);
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+    
+    const pBtn = document.getElementById('prestigeBtn');
+    if (pBtn) {
+        if (maxStageReached >= 50 && prestigeLevel < 10) {
+            pBtn.style.display = 'block';
+            pBtn.innerHTML = `⭐ ПЕРЕРОДИТЬСЯ<br><span style="font-size:12px;">P${prestigeLevel} → P${prestigeLevel + 1}</span>`;
+        } else {
+            pBtn.style.display = 'none';
+        }
+    }
+    
+    const perksBtn = document.getElementById('perksBtn');
+    if (perksBtn) {
+        if (prestigeLevel > 0) perksBtn.style.display = 'block';
+        else perksBtn.style.display = 'none';
+    }
+    
+    const contBtn = document.getElementById('continueBtn');
+    if (contBtn) contBtn.innerHTML = `▶ СМОТРЕТЬ РЕКЛАМУ<br><span style="font-size: 12px;">(+${MAX_LIVES - 1} ❤️ +2 🔪)</span>`;
+    
+    try {
+        const wb = getCurrentWeeklyBoss();
+        const wbCompleted = isWeeklyBossCompleted(wb.weekKey);
+        const weeklyBtn = document.getElementById('weeklyBtn');
+        if (weeklyBtn) {
+            if (wbCompleted) {
+                weeklyBtn.style.display = 'block';
+                weeklyBtn.innerHTML = `✅ БОСС НЕДЕЛИ ПРОЙДЕН`;
+                weeklyBtn.style.background = '#27ae60';
+                weeklyBtn.style.boxShadow = '0 5px 0 #1e8449';
+            } else {
+                weeklyBtn.style.display = 'block';
+                weeklyBtn.innerHTML = `🔥 БОСС НЕДЕЛИ: ${wb.icon} ${wb.name}`;
+                weeklyBtn.style.background = '#ff00aa';
+                weeklyBtn.style.boxShadow = '0 5px 0 #b30077';
+            }
+        }
+    } catch(e) {}
+    
+    updateQuestBadge();
+}
+
+function startGame() {
+    initAudio();
+    isWeeklyBossMode = false;
+    currentWeeklyBossConfig = null;
+    stage = 1; totalScore = 0; lives = MAX_LIVES;
+    initLevel();
+    gameState = 'playing';
+    [startScreen, shopScreen, questsScreen, achScreen, gameOverScreen, stageClearScreen, prestigeScreen, perksScreen, weeklyScreen, weeklyVictoryScreen].forEach(s => { if(s) s.classList.remove('active'); });
+}
+function restartGame() { startGame(); }
+function showStartMenu() {
+    gameState = 'menu'; stage = 1; totalScore = 0;
+    isWeeklyBossMode = false;
+    currentWeeklyBossConfig = null;
+    document.body.classList.remove('weekly-mode');
+    lives = MAX_LIVES;
+    updateLivesUI();
+    initLevel();
+    [gameOverScreen, prestigeScreen, perksScreen, weeklyScreen, weeklyVictoryScreen].forEach(s => { if(s) s.classList.remove('active'); });
+    if(startScreen) startScreen.classList.add('active');
+    updateUI();
+}
+function nextStage() {
+    const prevMax = maxStageReached;
+    stage++;
+    if (stage > maxStageReached) {
+        maxStageReached = stage;
+        localStorage.setItem('knifeHitMaxStage', maxStageReached);
+    }
+    if (prevMax < 50 && stage >= 50) {
+        setTimeout(() => showToast("⭐ PRESTIGE РАЗБЛОКИРОВАН!"), 600);
+    }
+    initLevel();
+    gameState = 'playing';
+    if(stageClearScreen) stageClearScreen.classList.remove('active');
+}
+
+// ============= СЕРИЯ И КВЕСТЫ =============
+const STREAK_REWARDS = [10, 15, 25, 40, 60, 100, 200];
+let streakCount = parseInt(localStorage.getItem('knifeHitStreak') || '0') || 0;
+let lastStreakDate = localStorage.getItem('knifeHitStreakDate') || null;
+
+function checkStreak() {
+    const today = new Date().toDateString();
+    const yesterday = new Date(Date.now() - 86400000).toDateString();
+    if (lastStreakDate === today) return false;
+    if (lastStreakDate === yesterday) streakCount = Math.min(streakCount + 1, 7);
+    else streakCount = 1;
+    return true;
+}
+
+function showStreakModal() {
+    const container = document.getElementById('streakDays');
+    if(!container) return;
+    container.innerHTML = '';
+    const mult = getAppleMultiplier();
+    for (let i = 0; i < 7; i++) {
+        const dayNum = i + 1;
+        const isClaimed = dayNum < streakCount;
+        const isToday = dayNum === streakCount;
+        const reward = Math.floor(STREAK_REWARDS[i] * mult);
+        const div = document.createElement('div');
+        div.className = `streak-day ${isClaimed ? 'claimed' : ''} ${isToday ? 'today' : ''}`;
+        div.innerHTML = `<div class="day-num">Д${dayNum}</div><div class="day-icon">${isClaimed ? '✅' : '🍎'}</div><div class="day-reward">${reward}</div>`;
+        container.appendChild(div);
+    }
+    document.getElementById('claimStreakBtn').innerText = `🎁 ЗАБРАТЬ +${Math.floor(STREAK_REWARDS[streakCount - 1] * mult)} 🍎`;
+    streakModal.classList.add('active');
+}
+
+function claimStreak() {
+    const reward = Math.floor(STREAK_REWARDS[streakCount - 1] * getAppleMultiplier());
+    totalApples += reward;
+    localStorage.setItem('knifeHitApples', totalApples);
+    localStorage.setItem('knifeHitStreak', streakCount);
+    localStorage.setItem('knifeHitStreakDate', new Date().toDateString());
+    lastStreakDate = new Date().toDateString();
+    playSound('apple');
+    if(streakModal) streakModal.classList.remove('active');
+    showToast(`🔥 День ${streakCount}! +${reward} 🍎`);
+    updateUI();
+}
+
+const QUEST_POOL = [
+    { id: 'throw40', desc: 'Брось 40 ножей', target: 40, reward: 30, key: 'thrownKnives' },
+    { id: 'throw80', desc: 'Брось 80 ножей', target: 80, reward: 50, key: 'thrownKnives' },
+    { id: 'apples5', desc: 'Сбей 5 яблок', target: 5, reward: 30, key: 'applesHit' },
+    { id: 'apples10', desc: 'Сбей 10 яблок', target: 10, reward: 60, key: 'applesHit' },
+    { id: 'combo5', desc: 'Сделай комбо x5', target: 5, reward: 50, key: 'bestCombo' },
+    { id: 'combo8', desc: 'Сделай комбо x8', target: 8, reward: 80, key: 'bestCombo' },
+    { id: 'boss1', desc: 'Убей 1 босса', target: 1, reward: 80, key: 'bossesDefeated' },
+    { id: 'stages3', desc: 'Пройди 3 уровня', target: 3, reward: 50, key: 'stagesCleared' },
+    { id: 'stages5', desc: 'Пройди 5 уровня', target: 5, reward: 80, key: 'stagesCleared' },
+    { id: 'golden1', desc: 'Сбей золотое яблоко', target: 1, reward: 100, key: 'goldenHit' }
+];
+
+let todayQuests = [];
+let questProgress = { thrownKnives: 0, applesHit: 0, bestCombo: 0, bossesDefeated: 0, stagesCleared: 0, goldenHit: 0 };
+let questsClaimed = {};
+let questsDate = localStorage.getItem('knifeHitQuestsDate') || null;
+let _saveQuestsTimer = null;
+
+function _writeQuests() {
+    localStorage.setItem('knifeHitQuests', JSON.stringify({ list: todayQuests, progress: questProgress, claimed: questsClaimed }));
+    localStorage.setItem('knifeHitQuestsDate', questsDate);
+}
+function saveQuests() {
+    if (_saveQuestsTimer) return;
+    _saveQuestsTimer = setTimeout(() => { _saveQuestsTimer = null; _writeQuests(); }, 500);
+}
+function saveQuestsNow() {
+    if (_saveQuestsTimer) { clearTimeout(_saveQuestsTimer); _saveQuestsTimer = null; }
+    _writeQuests();
+}
+
+function initDailyQuests() {
+    const todayStr = new Date().toDateString();
+    if (questsDate === todayStr) {
+        try {
+            const saved = JSON.parse(localStorage.getItem('knifeHitQuests') || '{}');
+            todayQuests = saved.list || [];
+            questProgress = saved.progress || { thrownKnives: 0, applesHit: 0, bestCombo: 0, bossesDefeated: 0, stagesCleared: 0, goldenHit: 0 };
+            questsClaimed = saved.claimed || {};
+        } catch(e) { localStorage.removeItem('knifeHitQuests'); }
+    } else {
+        const shuffled = [...QUEST_POOL].sort(() => Math.random() - 0.5);
+        todayQuests = shuffled.slice(0, 3);
+        questProgress = { thrownKnives: 0, applesHit: 0, bestCombo: 0, bossesDefeated: 0, stagesCleared: 0, goldenHit: 0 };
+        questsClaimed = {};
+        questsDate = todayStr;
+        saveQuestsNow();
+    }
+    updateQuestBadge();
+}
+
+function addQuestProgress(key, value = 1) {
+    if (key === 'bestCombo') {
+        if (value > questProgress.bestCombo) questProgress.bestCombo = value;
+    } else {
+        questProgress[key] = (questProgress[key] || 0) + value;
+    }
+    saveQuests();
+}
+
+function updateQuestBadge() {
+    try {
+        const claimable = todayQuests.filter(q => !questsClaimed[q.id] && questProgress[q.key] >= q.target).length;
+        const badge = document.getElementById('questBadge');
+        if (badge) {
+            if (claimable > 0) { badge.style.display = 'block'; badge.innerText = claimable; }
+            else badge.style.display = 'none';
+        }
+    } catch(e) {}
+}
+
+function openQuests() { renderQuests(); if(questsScreen) questsScreen.classList.add('active'); if(startScreen) startScreen.classList.remove('active'); }
+
+function renderQuests() {
+    const list = document.getElementById('questsList');
+    if(!list) return;
+    list.innerHTML = '';
+    let allClaimable = true, allClaimed = true;
+    const mult = getAppleMultiplier();
+    todayQuests.forEach(q => {
+        const progress = Math.min(questProgress[q.key] || 0, q.target);
+        const isDone = progress >= q.target;
+        const isClaimed = questsClaimed[q.id];
+        if (!isDone) allClaimable = false;
+        if (!isClaimed) allClaimed = false;
+        const actualReward = Math.floor(q.reward * mult);
+        const div = document.createElement('div');
+        div.className = `quest-item ${isClaimed ? 'completed' : ''}`;
+        div.innerHTML = `
+            <div class="quest-info"><div class="quest-desc">${q.desc}</div><div class="quest-progress">${progress} / ${q.target}</div></div>
+            <div class="quest-reward ${isClaimed ? 'claimed' : ''}" onclick="claimQuest('${q.id}')">${isClaimed ? '✓' : (isDone ? 'ЗАБРАТЬ' : `+${actualReward} 🍎`)}</div>
+        `;
+        list.appendChild(div);
+    });
+    const btn = document.getElementById('claimAllQuestsBtn');
+    if(btn) btn.style.display = (allClaimable && !allClaimed) ? 'block' : 'none';
+}
+
+function claimQuest(id) {
+    const q = todayQuests.find(x => x.id === id);
+    if (!q || questsClaimed[q.id]) return;
+    if ((questProgress[q.key] || 0) < q.target) return;
+    questsClaimed[q.id] = true;
+    const reward = Math.floor(q.reward * getAppleMultiplier());
+    totalApples += reward;
+    localStorage.setItem('knifeHitApples', totalApples);
+    saveQuestsNow();
+    playSound('apple');
+    showToast(`+${reward} 🍎 за задание!`);
+    updateUI(); updateQuestBadge(); renderQuests();
+}
+
+function claimAllQuests() {
+    let bonusGiven = false;
+    const mult = getAppleMultiplier();
+    todayQuests.forEach(q => {
+        if (!questsClaimed[q.id] && (questProgress[q.key] || 0) >= q.target) {
+            questsClaimed[q.id] = true;
+            totalApples += Math.floor(q.reward * mult);
+            if (!bonusGiven) { totalApples += Math.floor(30 * mult); bonusGiven = true; }
+        }
+    });
+    localStorage.setItem('knifeHitApples', totalApples);
+    saveQuestsNow();
+    playSound('apple');
+    showToast('🎁 Все задания выполнены! +Бонус');
+    updateUI(); updateQuestBadge(); renderQuests();
+}
+
+const ACHIEVEMENTS = [
+    { id: 'stage10', desc: 'Достигни 10 уровня', icon: '🎯', check: () => stage >= 10, reward: 100 },
+    { id: 'stage25', desc: 'Достигни 25 уровня', icon: '🏅', check: () => stage >= 25, reward: 250 },
+    { id: 'stage50', desc: 'Достигни 50 уровня', icon: '👑', check: () => stage >= 50, reward: 500 },
+    { id: 'boss5', desc: 'Победи 5 боссов', icon: '💀', check: () => (parseInt(localStorage.getItem('ach_boss') || '0') >= 5), reward: 300 },
+    { id: 'boss20', desc: 'Победи 20 боссов', icon: '⚔️', check: () => (parseInt(localStorage.getItem('ach_boss') || '0') >= 20), reward: 1000 },
+    { id: 'golden20', desc: 'Сбей 20 золотых яблок', icon: '🌟', check: () => (parseInt(localStorage.getItem('ach_golden') || '0') >= 20), reward: 500 },
+    { id: 'combo10', desc: 'Сделай комбо x10', icon: '🔥', check: () => (parseInt(localStorage.getItem('ach_combo') || '0') >= 10), reward: 400 },
+    { id: 'skins5', desc: 'Купи 5 скинов', icon: '🎨', check: () => unlockedSkins.length >= 5, reward: 200 },
+    { id: 'skins10', desc: 'Купи 10 скинов', icon: '💎', check: () => unlockedSkins.length >= 10, reward: 500 },
+    { id: 'skinsAll', desc: 'Собери все скины и брёвна', icon: '🏆', check: () => (unlockedSkins.length + unlockedLogs.length) >= (ALL_SKINS.length + ALL_LOGS.length), reward: 15000 },
+    { id: 'prestige10', desc: 'Достигни Prestige 10', icon: '⭐', check: () => prestigeLevel >= 10, reward: 5000 },
+    { id: 'weekly1', desc: 'Победи 1 босса недели', icon: '🔥', check: () => unlockedTrophies.length >= 1, reward: 500 },
+    { id: 'weekly5', desc: 'Победи 5 боссов недели', icon: '👹', check: () => unlockedTrophies.length >= 5, reward: 2500 }
+];
+
+let achievementsUnlocked = {};
+try {
+    let parsed = JSON.parse(localStorage.getItem('knifeHitAch') || '{}');
+    if (typeof parsed === 'object' && parsed !== null) achievementsUnlocked = parsed;
+} catch(e) {}
+
+function checkAchievements() {
+    let newUnlocks = [];
+    ACHIEVEMENTS.forEach(a => {
+        try {
+            if (!achievementsUnlocked[a.id] && a.check()) {
+                achievementsUnlocked[a.id] = true;
+                totalApples += a.reward;
+                newUnlocks.push(a);
+            }
+        } catch(e) {}
+    });
+    if (newUnlocks.length > 0) {
+        localStorage.setItem('knifeHitAch', JSON.stringify(achievementsUnlocked));
+        localStorage.setItem('knifeHitApples', totalApples);
+        updateUI();
+        newUnlocks.forEach((a, idx) => {
+            setTimeout(() => {
+                showToast(`🏆 ${a.desc} +${a.reward} 🍎`);
+                playSound('golden');
+            }, 500 + idx * 2500);
+        });
+    }
+}
+
+function openAchievements() { renderAchievements(); if(achScreen) achScreen.classList.add('active'); if(startScreen) startScreen.classList.remove('active'); }
+
+function renderAchievements() {
+    const list = document.getElementById('achList');
+    if(!list) return;
+    list.innerHTML = '';
+    const progressMap = {
+        boss5: `${parseInt(localStorage.getItem('ach_boss')||0)}/5`,
+        boss20: `${parseInt(localStorage.getItem('ach_boss')||0)}/20`,
+        golden20: `${parseInt(localStorage.getItem('ach_golden')||0)}/20`,
+        combo10: `${parseInt(localStorage.getItem('ach_combo')||0)}/10`,
+        skins5: `${unlockedSkins.length}/5`,
+        skins10: `${unlockedSkins.length}/10`,
+        skinsAll: `${unlockedSkins.length + unlockedLogs.length}/${ALL_SKINS.length + ALL_LOGS.length}`,
+        prestige10: `${prestigeLevel}/10`,
+        weekly1: `${unlockedTrophies.length}/1`,
+        weekly5: `${unlockedTrophies.length}/5`
+    };
+    ACHIEVEMENTS.forEach(a => {
+        const isUnlocked = achievementsUnlocked[a.id];
+        const progress = progressMap[a.id] || '';
+        const div = document.createElement('div');
+        div.className = `ach-item ${isUnlocked ? 'unlocked' : ''}`;
+        div.innerHTML = `
+            <div class="ach-icon">${isUnlocked ? '✅' : a.icon}</div>
+            <div class="ach-info">
+                <div class="ach-desc">${a.desc}</div>
+                ${progress && !isUnlocked ? `<div class="ach-progress">${progress}</div>` : ''}
+            </div>
+            <div class="ach-reward">${isUnlocked ? '✓' : '+'+a.reward}</div>
+        `;
+        list.appendChild(div);
+    });
+}
+
+function closeScreen(id) { const el = document.getElementById(id); if(el) el.classList.remove('active'); if(startScreen) startScreen.classList.add('active'); }
+
+const PRESTIGE_PERKS = [
+    { level: 1,  icon: '🍎', text: '+10% яблок навсегда' },
+    { level: 2,  icon: '❤️', text: '+1 жизнь (макс 4)' },
+    { level: 3,  icon: '🔄', text: '+5% скорость вращения + ещё +10% 🍎 (хардкор с наградой)' },
+    { level: 4,  icon: '🔪', text: '+1 стартовый нож' },
+    { level: 5,  icon: '🌟', text: 'Скин "Prestige Gold" + золотые яблоки 20%' },
+    { level: 6,  icon: '🔪', text: '+2 стартовых ножа' },
+    { level: 7,  icon: '🔥', text: 'Комбо каждые 2 попадания (было 3)' },
+    { level: 8,  icon: '⭐', text: 'Золотые яблоки 30% (было 20%)' },
+    { level: 9,  icon: '💎', text: 'Бонус Stage Clear ×2' },
+    { level: 10, icon: '👑', text: '+110% яблок, скин "Beyond", ачивка Легенда' }
+];
+
+function renderPerkList(containerId, markCurrent = false) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '';
+    const nextLevel = prestigeLevel + 1;
+    PRESTIGE_PERKS.forEach(perk => {
+        const isActive = perk.level <= prestigeLevel;
+        const isNext = markCurrent && perk.level === nextLevel;
+        const div = document.createElement('div');
+        div.className = `perk-row ${isActive ? 'active' : ''} ${isNext ? 'next' : ''} ${!isActive && !isNext ? 'locked' : ''}`;
+        div.innerHTML = `
+            <div class="perk-level">P${perk.level}</div>
+            <div class="perk-icon">${perk.icon}</div>
+            <div class="perk-text">${perk.text}</div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+function openPerks() {
+    renderPerkList('perksList', false);
+    if(perksScreen) perksScreen.classList.add('active'); if(startScreen) startScreen.classList.remove('active');
+}
+
+function openPrestige() {
+    if (maxStageReached < 50) {
+        showToast(`🔒 Нужно достичь 50 уровня (сейчас: ${maxStageReached})`);
+        return;
+    }
+    if (prestigeLevel >= 10) {
+        showToast("⭐ МАКСИМАЛЬНЫЙ PRESTIGE!");
+        return;
+    }
+    const next = prestigeLevel + 1;
+    document.getElementById('pCurrentLevel').innerText = `${prestigeLevel} / 10`;
+    document.getElementById('pNextLevel').innerText = next;
+    document.getElementById('pBonus').innerText = Math.round((getAppleMultiplier() * 100 - 100));
+    const perk = PRESTIGE_PERKS.find(p => p.level === next);
+    document.getElementById('pExtraReward').innerText = perk ? `${perk.icon} ${perk.text}` : '';
+    renderPerkList('prestigePerkList', true);
+    if(startScreen) startScreen.classList.remove('active'); if(prestigeScreen) prestigeScreen.classList.add('active');
+}
+
+function confirmPrestige() {
+    if (prestigeLevel >= 10) { closeScreen('prestigeScreen'); return; }
+    prestigeLevel++;
+    localStorage.setItem('knifeHitPrestige', prestigeLevel);
+    MAX_LIVES = 3 + getExtraLives();
+    ALL_SKINS.forEach(s => {
+        if (s.prestigeReq && prestigeLevel >= s.prestigeReq && !unlockedSkins.includes(s.id)) {
+            unlockedSkins.push(s.id);
+        }
+    });
+    localStorage.setItem('knifeHitSkins', JSON.stringify(unlockedSkins));
+    stage = 1;
+    totalScore = 0;
+    maxStageReached = 1;
+    localStorage.setItem('knifeHitMaxStage', maxStageReached);
+    lives = MAX_LIVES;
+    flashColor = '155,89,182';
+    flashAlpha = 0.85;
+    playSound('golden');
+    if(prestigeScreen) prestigeScreen.classList.remove('active');
+    showStartMenu();
+    const perk = PRESTIGE_PERKS.find(p => p.level === prestigeLevel);
+    let msg = `⭐ PRESTIGE ${prestigeLevel}!`;
+    if (perk) msg += ` ${perk.icon} ${perk.text}`;
+    setTimeout(() => showToast(msg), 200);
+    checkAchievements();
+}
+
+function getISOWeek(d) {
+    const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+    const dayNum = date.getUTCDay() || 7;
+    date.setUTCDate(date.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+    return { week: Math.ceil((((date - yearStart) / 86400000) + 1) / 7), year: date.getUTCFullYear() };
+}
+
+function getCurrentWeekKey() {
+    const { week, year } = getISOWeek(new Date());
+    return `${year}-W${String(week).padStart(2, '0')}`;
+}
+
+function getCurrentWeeklyBoss() {
+    const { week, year } = getISOWeek(new Date());
+    const idx = (week + year) % WEEKLY_BOSSES.length;
+    return { ...WEEKLY_BOSSES[idx], weekKey: `${year}-W${String(week).padStart(2, '0')}` };
+}
+
+function getWeekEndMs() {
+    const now = new Date();
+    const day = now.getDay() || 7;
+    const daysUntilNextMonday = 8 - day;
+    const next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysUntilNextMonday, 0, 0, 0);
+    return next.getTime();
+}
+
+function isWeeklyBossCompleted(weekKey) {
+    return localStorage.getItem(`weeklyBoss_${weekKey}`) === 'completed';
+}
+function markWeeklyBossCompleted(weekKey) {
+    localStorage.setItem(`weeklyBoss_${weekKey}`, 'completed');
+}
+
+function openWeekly() {
+    try {
+        const wb = getCurrentWeeklyBoss();
+        const completed = isWeeklyBossCompleted(wb.weekKey);
+        const card = document.getElementById('weeklyBossCard');
+        if(!card) return;
+        const msLeft = getWeekEndMs() - Date.now();
+        const hours = Math.floor(msLeft / 3600000);
+        const days = Math.floor(hours / 24);
+        const hoursLeft = hours % 24;
+        
+        card.innerHTML = `
+            <div class="weekly-boss-icon">${wb.icon}</div>
+            <div class="weekly-boss-name">${wb.name}</div>
+            <div class="weekly-boss-desc">${wb.desc}</div>
+            <div class="weekly-boss-reward">🏆 +${Math.floor(50 * getAppleMultiplier() * getStageClearMult())} 🍎 + эксклюзивный трофей</div>
+            <div class="weekly-boss-trophy">👑 Трофей: ${wb.trophySkin.name}</div>
+            <div class="weekly-boss-timer">⏳ Осталось: ${days}д ${hoursLeft}ч</div>
+            ${completed ? '<div style="margin-top: 10px; color: #2ecc71; font-weight: 900;">✅ УЖЕ ПРОЙДЕН НА ЭТОЙ НЕДЕЛЕ</div>' : ''}
+        `;
+        
+        const startBtn = document.getElementById('weeklyStartBtn');
+        if(startBtn) startBtn.style.display = completed ? 'none' : 'block';
+        if(startScreen) startScreen.classList.remove('active'); if(weeklyScreen) weeklyScreen.classList.add('active');
+    } catch(e) { console.warn(e); }
+}
+
+function startWeeklyBoss() {
+    try {
+        const wb = getCurrentWeeklyBoss();
+        if (isWeeklyBossCompleted(wb.weekKey)) {
+            showToast("✅ Уже пройден на этой неделе");
+            return;
+        }
+        initAudio();
+        currentWeeklyBossConfig = wb;
+        isWeeklyBossMode = true;
+        stage = 1;
+        totalScore = 0;
+        lives = MAX_LIVES;
+        initLevel();
+        gameState = 'weeklyboss';
+        if(weeklyScreen) weeklyScreen.classList.remove('active');
+        showToast(`🔥 ${wb.icon} ${wb.name.toUpperCase()}!`);
+    } catch(e) {}
+}
+
+function weeklyBossVictory() {
+    try {
+        const wb = currentWeeklyBossConfig;
+        if (!wb) return;
+        
+        isShattered = true;
+        const ccX = baseCenterX + targetOffsetX;
+        const ccY = baseCenterY + targetOffsetY;
+        spawnParticles(ccX, ccY, wb.bossBase, 80, 1.8);
+        spawnParticles(ccX, ccY, wb.bossRing, 80, 1.8);
+        spawnParticles(ccX, ccY, '#f1c40f', 60, 2.2);
+        flashColor = '255,0,170';
+        flashAlpha = 1;
+        screenShake = 40;
+        slowMo(0.15, 800);
+        
+        markWeeklyBossCompleted(wb.weekKey);
+        
+        addQuestProgress('bossesDefeated');
+        localStorage.setItem('ach_boss', parseInt(localStorage.getItem('ach_boss') || '0') + 1);
+        
+        if (!unlockedTrophies.includes(wb.trophySkin.id)) {
+            unlockedTrophies.push(wb.trophySkin.id);
+            localStorage.setItem('knifeHitTrophies', JSON.stringify(unlockedTrophies));
+        }
+        
+        const weeklyReward = Math.floor(50 * getAppleMultiplier() * getStageClearMult());
+        totalApples += weeklyReward;
+        localStorage.setItem('knifeHitApples', totalApples);
+        
+        document.getElementById('victoryBossIcon').innerText = wb.icon;
+        document.getElementById('victoryBossName').innerText = wb.trophySkin.name;
+        document.getElementById('weeklyVictoryReward').innerText = weeklyReward;
+        
+        isWeeklyBossMode = false;
+        currentWeeklyBossConfig = null;
+        document.body.classList.remove('weekly-mode');
+        
+        playSound('trophy');
+        gameState = 'weeklyvictory';
+        if(weeklyVictoryScreen) weeklyVictoryScreen.classList.add('active');
+        updateUI();
+        checkAchievements();
+    } catch(e) { console.warn(e); }
+}
+
+function openShop() { initAudio(); gameState = 'shop'; if(startScreen) startScreen.classList.remove('active'); if(shopScreen) shopScreen.classList.add('active'); switchTab('knives'); }
+function switchTab(tab) {
+    currentShopTab = tab;
+    document.querySelectorAll('#shopTabs .tab-btn').forEach(b => b.classList.remove('active'));
+    const idx = tab === 'knives' ? 0 : (tab === 'logs' ? 1 : 2);
+    const btns = document.querySelectorAll('#shopTabs .tab-btn');
+    if (btns[idx]) btns[idx].classList.add('active');
+    renderShop();
+}
+
+function renderKnifePreview(cv, skin) {
+    try {
+        const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+        c.save(); c.translate(cv.width / 2, cv.height - 10); c.scale(0.4, 0.4);
+        drawKnifeShape(c, skin || ALL_SKINS[0], 120); c.restore();
+    } catch (e) { console.warn("Knife preview error", e); }
+}
+function renderLogPreview(cv, log) {
+    try {
+        const c = cv.getContext('2d'); c.clearRect(0, 0, cv.width, cv.height);
+        c.save(); c.translate(cv.width / 2, cv.height / 2); c.scale(cv.width / 140, cv.width / 140);
+        drawLogShape(c, log || ALL_LOGS[0], 60, false); c.restore();
+    } catch (e) { console.warn("Log preview error", e); }
+}
+
+function renderShop() {
+    try {
+        const container = document.getElementById('shopItems');
+        if(!container) return;
+        container.innerHTML = '';
+        const appleDisp = document.getElementById('shopAppleDisplay');
+        if(appleDisp) appleDisp.innerText = totalApples;
+        const isKnives = currentShopTab === 'knives';
+        const isLogs = currentShopTab === 'logs';
+        
+        if (!Array.isArray(unlockedSkins)) unlockedSkins = ['default'];
+        if (!Array.isArray(unlockedLogs)) unlockedLogs = ['wood'];
+
+        if (currentShopTab === 'trophies') {
+            const allTrophySkins = WEEKLY_BOSSES.map(b => b.trophySkin).filter(Boolean);
+            allTrophySkins.forEach(skin => {
+                const owned = unlockedTrophies.includes(skin.id);
+                const isSelected = selectedSkinId === skin.id;
+                const card = document.createElement('div');
+                card.className = `shop-card ${isSelected ? 'selected' : ''} ${owned ? 'trophy-owned' : 'trophy-locked'}`;
+                const cv = document.createElement('canvas'); cv.width = 60; cv.height = 70; cv.className = 'preview-canvas';
+                renderKnifePreview(cv, skin);
+                const title = document.createElement('div'); title.className = 'item-name'; title.innerText = skin.name || '???';
+                const status = document.createElement('div'); status.className = 'item-status';
+                if (isSelected) { status.innerText = '✓'; status.style.color = '#2ecc71'; }
+                else if (owned) { status.innerText = 'НАДЕТЬ'; status.style.color = '#f1c40f'; }
+                else { status.innerText = '🔒 ЗАКРЫТ'; status.style.color = '#666'; }
+                card.appendChild(cv); card.appendChild(title); card.appendChild(status);
+                card.onclick = () => {
+                    if (!owned) { showToast("🔒 Победи босса недели"); playSound('fail'); return; }
+                    selectedSkinId = skin.id;
+                    localStorage.setItem('knifeHitSelectedSkin', selectedSkinId);
+                    cachedSkin = getCurrentSkin();
+                    renderShop();
+                };
+                container.appendChild(card);
+            });
+            return;
+        }
+        
+        const items = isKnives ? ALL_SKINS : ALL_LOGS;
+        const unlocked = isKnives ? unlockedSkins : unlockedLogs;
+        const selected = isKnives ? selectedSkinId : selectedLogId;
+
+        items.forEach(item => {
+            if (!item) return;
+            const isUnlocked = unlocked.includes(item.id);
+            const isSelected = selected === item.id;
+            const prestigeLocked = isKnives && item.prestigeReq && prestigeLevel < item.prestigeReq;
+            
+            const card = document.createElement('div');
+            card.className = `shop-card ${isSelected ? 'selected' : ''} ${prestigeLocked ? 'prestige-locked' : ''}`;
+            const cv = document.createElement('canvas'); cv.width = 60; cv.height = 70; cv.className = 'preview-canvas';
+            if (isKnives) renderKnifePreview(cv, item); else renderLogPreview(cv, item);
+            const title = document.createElement('div'); title.className = 'item-name'; title.innerText = item.name;
+            const status = document.createElement('div'); status.className = 'item-status';
+            
+            if (isSelected) { status.innerText = '✓'; status.style.color = '#2ecc71'; }
+            else if (prestigeLocked) { status.innerText = `⭐ P${item.prestigeReq}`; status.style.color = '#c39bd3'; }
+            else if (isUnlocked) { status.innerText = 'НАДЕТЬ'; status.style.color = '#bdc3c7'; }
+            else { status.innerText = `🍎 ${item.price.toLocaleString()}`; status.style.color = totalApples >= item.price ? '#f1c40f' : '#e74c3c'; }
+            
+            card.appendChild(cv); card.appendChild(title); card.appendChild(status);
+            card.onclick = () => {
+                if (prestigeLocked) { showToast(`🔒 Нужен Prestige ${item.prestigeReq}`); playSound('fail'); return; }
+                if (isUnlocked) {
+                    if (isKnives) { selectedSkinId = item.id; localStorage.setItem('knifeHitSelectedSkin', selectedSkinId); cachedSkin = getCurrentSkin(); }
+                    else { selectedLogId = item.id; localStorage.setItem('knifeHitSelectedLog', selectedLogId); cachedLog = getCurrentLog(); }
+                    renderShop();
+                } else {
+                    if (totalApples >= item.price) {
+                        totalApples -= item.price;
+                        localStorage.setItem('knifeHitApples', totalApples);
+                        if (isKnives) { unlockedSkins.push(item.id); localStorage.setItem('knifeHitSkins', JSON.stringify(unlockedSkins)); selectedSkinId = item.id; localStorage.setItem('knifeHitSelectedSkin', selectedSkinId); cachedSkin = getCurrentSkin(); }
+                        else { unlockedLogs.push(item.id); localStorage.setItem('knifeHitLogs', JSON.stringify(unlockedLogs)); selectedLogId = item.id; localStorage.setItem('knifeHitSelectedLog', selectedLogId); cachedLog = getCurrentLog(); }
+                        updateUI(); renderShop(); playSound('apple'); showToast("Куплено! 🎉"); checkAchievements();
+                    } else { playSound('fail'); showToast("Не хватает яблок! 🍎"); }
+                }
+            };
+            container.appendChild(card);
+        });
+    } catch (e) {
+        console.warn("Shop render critical error:", e);
+    }
+}
+
+function watchAdForApples() {
+    if (isAdPlaying) return; isAdPlaying = true;
+    if(shopScreen) shopScreen.classList.remove('active'); if(adScreen) adScreen.classList.add('active');
+    let t = 3; document.getElementById('adTimer').innerText = t;
+    let i = setInterval(() => {
+        t--; document.getElementById('adTimer').innerText = t;
+        if (t <= 0) {
+            clearInterval(i); if(adScreen) adScreen.classList.remove('active'); if(shopScreen) shopScreen.classList.add('active');
+            totalApples += 10; localStorage.setItem('knifeHitApples', totalApples);
+            updateUI(); renderShop(); isAdPlaying = false;
+            showToast("+10 🍎!"); playSound('apple');
+        }
+    }, 1000);
+}
+
+function throwKnife() {
+    if ((gameState !== 'playing' && gameState !== 'weeklyboss') || flyingKnife || knivesLeft <= 0 || isAdPlaying || isShattered) return;
+    const now = Date.now(); if (now - lastThrowTime < 100) return; lastThrowTime = now;
+    knivesLeft--; updateUI();
+    addQuestProgress('thrownKnives');
+    flyingKnife = { y: knifeStartY, speed: knifeSpeed, rotation: 0, trail: [] };
+    playSound('throw');
+}
+canvas.addEventListener('mousedown', throwKnife);
+canvas.addEventListener('touchstart', (e) => { e.preventDefault(); throwKnife(); }, {passive: false});
+
+function loseLife(reason) {
+    lives--; comboStreak = 0; updateComboUI(); updateLivesUI();
+    screenShake = 20; playSound('hurt');
+    showToast(reason + ` -1 ❤️`);
+    if (lives <= 0) setTimeout(() => { if (gameState === 'playing' || gameState === 'weeklyboss') gameOver(); }, 300);
+}
+
+function continueGame() {
+    if (hasContinued || isAdPlaying) return; isAdPlaying = true;
+    if(gameOverScreen) gameOverScreen.classList.remove('active'); if(adScreen) adScreen.classList.add('active');
+    let timeLeft = 3; document.getElementById('adTimer').innerText = timeLeft;
+    let adInterval = setInterval(() => {
+        timeLeft--; document.getElementById('adTimer').innerText = timeLeft;
+        if (timeLeft <= 0) {
+            clearInterval(adInterval); hasContinued = true;
+            if(adScreen) adScreen.classList.remove('active');
+            flyingKnife = null;
+            lives = MAX_LIVES - 1;
+            knivesLeft += 2;
+            if (isBossLevel || isWeeklyBossMode) knivesLeft += 2;
+            crackAlpha = 0; crackLines = [];
+            updateLivesUI(); updateUI();
+            gameState = isWeeklyBossMode ? 'weeklyboss' : 'playing';
+            isAdPlaying = false;
+            showToast(`❤️ +${MAX_LIVES - 1} жизней и +2 🔪!`);
+        }
+    }, 1000);
+}
+
+function doubleStageReward() {
+    if (stageClearDoubled || isAdPlaying) return; stageClearDoubled = true; isAdPlaying = true;
+    if(stageClearScreen) stageClearScreen.classList.remove('active'); if(adScreen) adScreen.classList.add('active');
+    let t = 3; document.getElementById('adTimer').innerText = t;
+    let i = setInterval(() => {
+        t--; document.getElementById('adTimer').innerText = t;
+        if (t <= 0) {
+            clearInterval(i); if(adScreen) adScreen.classList.remove('active');
+            const bonus = Math.floor(10 * getAppleMultiplier() * getStageClearMult());
+            totalApples += bonus;
+            localStorage.setItem('knifeHitApples', totalApples);
+            updateUI(); if(stageClearScreen) stageClearScreen.classList.add('active'); isAdPlaying = false;
+            document.getElementById('doubleRewardBtn').style.display = 'none';
+            showToast(`+${bonus} 🍎!`); playSound('apple');
+        }
+    }, 1000);
+}
+
+function spawnParticles(x, y, color, count, sizeMult = 1) {
+    for (let i = 0; i < count; i++) particles.push({
+        x, y, vx: (Math.random() - 0.5) * 15, vy: (Math.random() - 0.5) * 15,
+        life: 1, color, size: (Math.random() * 5 + 2) * sizeMult,
+        rot: Math.random() * Math.PI, rotSpeed: (Math.random() - 0.5) * 0.3
+    });
+}
+
+function checkCollisions() {
+    if (!flyingKnife) return;
+    const ccX = baseCenterX + targetOffsetX, ccY = baseCenterY + targetOffsetY;
+    const knifeTipY = flyingKnife.y - knifeLength;
+    const dx = baseCenterX - ccX, dy = knifeTipY - ccY;
+    const distance = Math.hypot(dx, dy);
+    if (distance <= targetRadius && flyingKnife.y > ccY) {
+        const screenHitAngle = Math.atan2(dy, dx);
+        const localHitAngle = (screenHitAngle - targetAngle + Math.PI * 2) % (Math.PI * 2);
+        const mult = getAppleMultiplier();
+        let hitApple = false;
+        for (let apple of stuckApples) {
+            if (!apple.active) continue;
+            let angleDiff = Math.abs(localHitAngle - apple.angle);
+            if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+            if (angleDiff < 0.2) {
+                apple.active = false; hitApple = true;
+                addQuestProgress('applesHit');
+                if (apple.golden) {
+                    const reward = Math.floor(10 * mult);
+                    totalApples += reward; knivesLeft += 3;
+                    addQuestProgress('goldenHit');
+                    localStorage.setItem('ach_golden', parseInt(localStorage.getItem('ach_golden') || '0') + 1);
+                    playSound('golden'); slowMo(0.3, 500);
+                    spawnParticles(ccX, ccY + targetRadius, '#f1c40f', 40, 1.8);
+                    screenShake = 25; flashColor = '255,215,0'; flashAlpha = 0.7;
+                    showToast(`🌟 +${reward} 🍎 и +3 🔪`);
+                } else {
+                    const reward = Math.floor(3 * mult);
+                    totalApples += reward; knivesLeft++;
+                    playSound('apple');
+                    spawnParticles(ccX, ccY + targetRadius, '#e74c3c', 20);
+                    screenShake = 5;
+                    const aX = ccX + Math.cos(localHitAngle + targetAngle) * (targetRadius - 10);
+                    const aY = ccY + Math.sin(localHitAngle + targetAngle) * (targetRadius - 10);
+                    floatingTexts.push({ x: aX, y: aY, text: `+${reward} 🍎`, life: 1, vy: -1.5 });
+                }
+                localStorage.setItem('knifeHitApples', totalApples);
+                updateUI(); break;
+            }
+        }
+        if (!hitApple) {
+            let collision = false;
+            for (let k of knives) {
+                let angleDiff = Math.abs(localHitAngle - k.localAngle);
+                if (angleDiff > Math.PI) angleDiff = Math.PI * 2 - angleDiff;
+                if (angleDiff < 0.25) { collision = true; break; }
+            }
+            if (collision) { flyingKnife = null; loseLife("💥 Столкновение!"); return; }
+        }
+        knives.push({ localAngle: localHitAngle });
+        stageScore++; totalScore++; comboStreak++;
+        addQuestProgress('bestCombo', comboStreak);
+        const comboThreshold = getComboThreshold();
+        if (comboStreak > 0 && comboStreak % comboThreshold === 0) {
+            const comboLevel = Math.floor(comboStreak / comboThreshold);
+            const bonus = Math.floor(comboLevel * 2 * mult);
+            totalApples += bonus;
+            localStorage.setItem('knifeHitApples', totalApples);
+            playSound('combo');
+            showToast(`🔥 COMBO x${comboStreak}! +${bonus} 🍎`);
+            flashColor = '255,140,0'; flashAlpha = 0.3;
+        }
+        const prevAchCombo = parseInt(localStorage.getItem('ach_combo') || '0');
+        if (comboStreak > prevAchCombo) localStorage.setItem('ach_combo', comboStreak);
+        updateComboUI(); updateUI();
+        spawnParticles(ccX, ccY + targetRadius, cachedLog.base, 10);
+        screenShake = 8; flyingKnife = null; playSound('hit');
+        if (stageScore >= targetScore) {
+            if (isWeeklyBossMode) weeklyBossVictory();
+            else stageClear();
+        }
+        else if (knivesLeft <= 0) gameOver();
+    }
+}
+
+function gameOver() {
+    gameState = 'gameover'; flyingKnife = null; playSound('fail');
+    crackAlpha = 1; crackLines = [];
+    for (let i = 0; i < 5; i++) {
+        const sx = Math.random() * canvas.width, sy = Math.random() * canvas.height;
+        const segs = []; let cx = sx, cy = sy, ang = Math.random() * Math.PI * 2;
+        for (let j = 0; j < 5; j++) {
+            ang += (Math.random() - 0.5) * 0.6;
+            const d = 50 + Math.random() * 100;
+            cx += Math.cos(ang) * d; cy += Math.sin(ang) * d;
+            segs.push({ x: cx, y: cy });
+        }
+        crackLines.push({ start: { x: sx, y: sy }, segs });
+    }
+    if (!isWeeklyBossMode && totalScore > highScore) {
+        highScore = totalScore;
+        localStorage.setItem('knifeHitHighScore', highScore);
+        updateUI();
+    }
+    document.getElementById('finalScore').innerText = totalScore;
+    document.getElementById('endHighScore').innerText = highScore;
+    document.getElementById('continueBtn').style.display = hasContinued ? 'none' : 'block';
+    if(gameOverScreen) gameOverScreen.classList.add('active');
+    try { checkAchievements(); } catch(e) { console.warn(e); }
+}
+
+function stageClear() {
+    try {
+        gameState = 'stageclear'; isShattered = true;
+        
+        setTimeout(() => { 
+            if (gameState === 'stageclear' && stageClearScreen) stageClearScreen.classList.add('active'); 
+        }, 1000);
+        
+        const ccX = baseCenterX + targetOffsetX, ccY = baseCenterY + targetOffsetY;
+        const count = isBossLevel ? 120 : 60;
+        const c1 = isBossLevel ? '#8B0000' : ((cachedLog && cachedLog.base) || '#d4a373');
+        const c2 = isBossLevel ? '#f1c40f' : ((cachedLog && cachedLog.ring) || '#b5835a');
+        spawnParticles(ccX, ccY, c1, count / 2);
+        spawnParticles(ccX, ccY, c2, count / 2);
+        
+        flashColor = isBossLevel ? '255,0,0' : '255,200,0';
+        flashAlpha = isBossLevel ? 0.7 : 0.35;
+        
+        const reward = Math.floor(10 * getAppleMultiplier() * getStageClearMult());
+        totalApples += reward;
+        
+        const bonusTxt = document.getElementById('stageBonusText');
+        if (bonusTxt) bonusTxt.innerText = reward;
+        
+        localStorage.setItem('knifeHitApples', totalApples);
+        addQuestProgress('stagesCleared');
+        if (isBossLevel) {
+            addQuestProgress('bossesDefeated');
+            localStorage.setItem('ach_boss', parseInt(localStorage.getItem('ach_boss') || '0') + 1);
+        }
+        updateUI();
+        
+        const doubleBtn = document.getElementById('doubleRewardBtn');
+        if (doubleBtn) {
+            doubleBtn.style.display = 'block';
+            doubleBtn.innerText = `🎬 УДВОИТЬ (+${reward} 🍎)`;
+        }
+        
+        try { checkAchievements(); } catch(e) { console.warn(e); }
+    } catch (err) {
+        console.error("StageClear error:", err);
+        if (stageClearScreen) stageClearScreen.classList.add('active'); 
+    }
+}
+
+function slowMo(factor, duration) { timeScale = factor; setTimeout(() => { timeScale = 1; }, duration); }
+
+// ============= ОТРИСОВКА =============
+function drawKnifeShape(c, skin, len) {
+    if (!skin) skin = ALL_SKINS[0];
+    const shape = skin.shape || 'classic';
+    if (skin.glow) { c.shadowColor = skin.glow; c.shadowBlur = 15; }
+    if (shape === 'katana') {
+        c.fillStyle = '#1a1a1a'; c.fillRect(-5, 0, 10, 55);
+        c.fillStyle = '#f1c40f'; c.beginPath(); c.ellipse(0, 0, 12, 4, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = skin.bladeColor || '#fff';
+        c.beginPath(); c.moveTo(-4, -4); c.quadraticCurveTo(-8, -len * 0.5, -2, -len); c.quadraticCurveTo(2, -len * 0.5, 4, -4); c.closePath(); c.fill();
+    } else if (shape === 'cleaver') {
+        c.fillStyle = '#4a2c1a'; c.fillRect(-5, 0, 10, 35);
+        c.fillStyle = skin.bladeColor || '#fff'; c.fillRect(-14, -(len-5), 28, len-5);
+    } else if (shape === 'kunai') {
+        c.fillStyle = '#555'; c.fillRect(-4, 0, 8, 30);
+        c.strokeStyle = '#333'; c.lineWidth = 3; c.beginPath(); c.arc(0, 35, 6, 0, Math.PI * 2); c.stroke();
+        c.fillStyle = skin.bladeColor || '#fff'; c.beginPath(); c.moveTo(-8, 0); c.lineTo(8, 0); c.lineTo(0, -len * 0.85); c.closePath(); c.fill();
+    } else if (shape === 'cyber') {
+        c.fillStyle = '#111'; c.fillRect(-6, 0, 12, 45);
+        c.fillStyle = '#ff00ff'; for(let i=5;i<40;i+=10) c.fillRect(-6, i, 12, 2);
+        c.fillStyle = skin.bladeColor || '#fff'; c.beginPath(); c.moveTo(-6, 0); c.lineTo(6, 0); c.lineTo(0, -len); c.closePath(); c.fill();
+        c.strokeStyle = '#00ffff'; c.lineWidth = 2; c.beginPath(); c.moveTo(-6, 0); c.lineTo(0, -len); c.stroke();
+    } else if (shape === 'flame') {
+        c.fillStyle = '#3a0000'; c.fillRect(-6, 0, 12, 45);
+        const g = c.createLinearGradient(0, 0, 0, -len); g.addColorStop(0, '#ff0000'); g.addColorStop(0.5, '#ff6b00'); g.addColorStop(1, '#ffcc00');
+        c.fillStyle = g; c.beginPath(); c.moveTo(-7, 0); c.quadraticCurveTo(-10, -len*0.3, -3, -len*0.6); c.quadraticCurveTo(-5, -len*0.8, 0, -len); c.quadraticCurveTo(5, -len*0.8, 3, -len*0.6); c.quadraticCurveTo(10, -len*0.3, 7, 0); c.closePath(); c.fill();
+    } else if (shape === 'galaxy' || shape === 'void') {
+        c.fillStyle = shape === 'void' ? '#000' : '#1a0033'; c.fillRect(-6, 0, 12, 45);
+        c.fillStyle = skin.bladeColor || '#fff';
+        c.beginPath(); c.moveTo(-6, 0); c.lineTo(6, 0); c.lineTo(0, -len); c.closePath(); c.fill();
+        c.fillStyle = '#fff';
+        for (let i = 0; i < 6; i++) {
+            const y = -((i / 6) * len + 8);
+            const x = -3 + (i % 3) * 2;
+            c.fillRect(x, y, 1.2, 1.2);
+        }
+    } else if (shape === 'rainbow') {
+        c.fillStyle = '#ff0066'; c.fillRect(-6, 0, 12, 45);
+        const g = c.createLinearGradient(0, 0, 0, -len); g.addColorStop(0, '#ff0000'); g.addColorStop(0.3, '#ffff00'); g.addColorStop(0.6, '#00ff00'); g.addColorStop(1, '#9900ff');
+        c.fillStyle = g; c.beginPath(); c.moveTo(-6, 0); c.lineTo(6, 0); c.lineTo(0, -len); c.closePath(); c.fill();
+    } else if (shape === 'dragon') {
+        c.fillStyle = '#8b0000'; c.fillRect(-6, 0, 12, 45);
+        c.fillStyle = '#ffcc00'; for(let i=0;i<45;i+=6) { c.beginPath(); c.moveTo(-6, i); c.lineTo(0, i+3); c.lineTo(6, i); c.lineTo(0, i+4); c.closePath(); c.fill(); }
+        c.fillStyle = skin.bladeColor || '#fff'; c.beginPath(); c.moveTo(-6, 0); c.lineTo(6, 0); c.lineTo(0, -len); c.closePath(); c.fill();
+    } else if (shape === 'diamond') {
+        c.fillStyle = '#34495e'; c.fillRect(-6, 0, 12, 45);
+        const g = c.createLinearGradient(0, 0, 0, -len); g.addColorStop(0, '#4fc3f7'); g.addColorStop(0.5, '#81d4fa'); g.addColorStop(1, '#e1f5fe');
+        c.fillStyle = g; c.beginPath(); c.moveTo(-8, 0); c.lineTo(8, 0); c.lineTo(0, -len); c.closePath(); c.fill();
+    } else {
+        c.fillStyle = skin.handleColor || '#d35400'; c.fillRect(-6, 0, 12, 45);
+        c.fillStyle = 'rgba(0,0,0,0.3)'; for(let i=0;i<45;i+=8) c.fillRect(-6, i, 12, 3);
+        c.fillStyle = skin.bladeColor || '#ecf0f1'; c.beginPath(); c.moveTo(-6, 0); c.lineTo(6, 0); c.lineTo(0, -len); c.closePath(); c.fill();
+        c.fillStyle = 'rgba(255,255,255,0.7)'; c.beginPath(); c.moveTo(0, 0); c.lineTo(2, 0); c.lineTo(0, -len+10); c.closePath(); c.fill();
+    }
+    c.shadowBlur = 0;
+}
+
+function drawLogShape(c, logSkin, R, boss, weeklyBossCfg) {
+    if (!logSkin) logSkin = ALL_LOGS[0];
+    const shape = logSkin.shape || 'wood';
+    let bColor = boss ? logSkin.bossBase : logSkin.base;
+    let rColor = boss ? logSkin.bossRing : logSkin.ring;
+    let barkColor = boss ? logSkin.bossBark : logSkin.bark;
+    if (weeklyBossCfg) {
+        bColor = weeklyBossCfg.bossBase;
+        rColor = weeklyBossCfg.bossRing;
+        barkColor = weeklyBossCfg.bossBark;
+    }
+    if (!bColor) bColor = '#d4a373';
+    if (!rColor) rColor = '#b5835a';
+    if (!barkColor) barkColor = '#8B4513';
+
+    if (shape === 'watermelon') {
+        c.beginPath(); c.arc(0, 0, R, 0, Math.PI * 2); c.fillStyle = bColor; c.fill();
+        c.beginPath(); c.arc(0, 0, R * 0.85, 0, Math.PI * 2); c.fillStyle = rColor; c.fill();
+        c.fillStyle = '#000';
+        for (let i = 0; i < 8; i++) { const a = (i/8)*Math.PI*2, d = R*0.5; c.save(); c.translate(Math.cos(a)*d, Math.sin(a)*d); c.rotate(a); c.beginPath(); c.ellipse(0,0,3,5,0,0,Math.PI*2); c.fill(); c.restore(); }
+    } else if (shape === 'target') {
+        const cols = ['#fff','#e74c3c','#fff','#e74c3c','#fff'];
+        for (let i = 0; i < cols.length; i++) { c.beginPath(); c.arc(0,0,R*(1-i*0.18),0,Math.PI*2); c.fillStyle = cols[i]; c.fill(); }
+    } else if (shape === 'gear') {
+        const teeth = 12; c.beginPath();
+        for (let i = 0; i < teeth*2; i++) { const a = (i/(teeth*2))*Math.PI*2; const r = i%2===0?R:R*0.85; const px = Math.cos(a)*r, py = Math.sin(a)*r; if (i===0) c.moveTo(px,py); else c.lineTo(px,py); }
+        c.closePath(); c.fillStyle = bColor; c.fill();
+        c.beginPath(); c.arc(0,0,R*0.15,0,Math.PI*2); c.fillStyle = '#222'; c.fill();
+    } else if (shape === 'cyber') {
+        c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fillStyle = bColor; c.fill();
+        c.strokeStyle = rColor; c.lineWidth = 2;
+        for (let i = -R; i <= R; i += 15) { const h = Math.sqrt(R*R-i*i); c.beginPath(); c.moveTo(i,-h); c.lineTo(i,h); c.stroke(); }
+    } else if (shape === 'galaxy') {
+        c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fillStyle = bColor; c.fill();
+        c.fillStyle = '#fff';
+        for (let i = 0; i < 30; i++) {
+            const a = i * 2.39996;
+            const d = Math.sqrt(i / 30) * R * 0.9;
+            const size = 0.8 + (i % 3) * 0.4;
+            c.beginPath(); c.arc(Math.cos(a) * d, Math.sin(a) * d, size, 0, Math.PI * 2); c.fill();
+        }
+    } else if (shape === 'rainbow') {
+        const g = c.createRadialGradient(0,0,R*0.1,0,0,R); g.addColorStop(0,'#ff0066'); g.addColorStop(0.5,'#00ffcc'); g.addColorStop(1,'#9900ff');
+        c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fillStyle = g; c.fill();
+    } else if (shape === 'lava') {
+        c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fillStyle = bColor; c.fill();
+        c.strokeStyle = barkColor; c.lineWidth = 3;
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2 + 0.3;
+            c.beginPath(); c.moveTo(Math.cos(a) * R * 0.2, Math.sin(a) * R * 0.2);
+            c.lineTo(Math.cos(a + 0.25) * R * 0.7, Math.sin(a + 0.25) * R * 0.7); c.stroke();
+        }
+    } else if (shape === 'ice') {
+        c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fillStyle = bColor; c.fill();
+        c.strokeStyle = rColor;
+        for (let r = R*0.8; r > 10; r -= 15) { c.beginPath(); c.arc(0,0,r,0,Math.PI*2); c.lineWidth = 3; c.stroke(); }
+    } else {
+        c.beginPath(); c.arc(0,0,R,0,Math.PI*2); c.fillStyle = bColor; c.fill();
+        c.strokeStyle = rColor;
+        for (let r = R*0.8; r > 10; r -= 15) { c.beginPath(); c.arc(0,0,r,0,Math.PI*2); c.lineWidth = 4; c.stroke(); }
+    }
+    c.beginPath(); c.arc(0,0,R,0,Math.PI * 2); c.lineWidth = 12; c.strokeStyle = barkColor; c.stroke();
+}
+
+function drawKnife(x, y, angle, withShadow = true) {
+    ctx.save(); ctx.translate(x, y);
+    if (withShadow) { ctx.fillStyle = 'rgba(0,0,0,0.4)'; ctx.beginPath(); ctx.ellipse(0, 5, 8, 25, 0, 0, Math.PI * 2); ctx.fill(); }
+    ctx.rotate(angle); drawKnifeShape(ctx, cachedSkin, knifeLength); ctx.restore();
+}
+
+function drawLog() {
+    if (isShattered) return;
+    ctx.save(); ctx.translate(baseCenterX + targetOffsetX, baseCenterY + targetOffsetY); ctx.rotate(targetAngle);
+    ctx.shadowColor = isWeeklyBossMode ? 'rgba(255,0,170,0.6)' : (isBossLevel ? 'rgba(255,0,0,0.6)' : 'rgba(0,0,0,0.5)');
+    ctx.shadowBlur = 20; ctx.shadowOffsetY = 10;
+    drawLogShape(ctx, cachedLog, targetRadius, isBossLevel, isWeeklyBossMode ? currentWeeklyBossConfig : null);
+    ctx.shadowColor = 'transparent';
+    for (let apple of stuckApples) {
+        if (!apple.active) continue;
+        ctx.save(); ctx.rotate(apple.angle); ctx.translate(targetRadius - 10, 0);
+        ctx.beginPath(); ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.fillStyle = apple.golden ? '#f1c40f' : '#e74c3c'; ctx.fill();
+        if (apple.golden) { ctx.shadowColor = '#f1c40f'; ctx.shadowBlur = 15; ctx.fill(); ctx.shadowBlur = 0; }
+        ctx.strokeStyle = apple.golden ? '#d68910' : '#c0392b'; ctx.lineWidth = 2; ctx.stroke();
+        ctx.fillStyle = '#2ecc71'; ctx.beginPath(); ctx.ellipse(5, -10, 8, 4, Math.PI/4, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+    if (isWeeklyBossMode && currentWeeklyBossConfig) {
+        ctx.save(); ctx.rotate(-targetAngle);
+        ctx.font = 'bold 40px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(currentWeeklyBossConfig.icon, 0, 0);
+        ctx.restore();
+    } else if (isBossLevel) {
+        ctx.save(); ctx.rotate(-targetAngle);
+        ctx.fillStyle = '#f1c40f'; ctx.font = 'bold 24px Montserrat, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+        ctx.strokeText('BOSS', 0, 0); 
+        ctx.fillText('BOSS', 0, 0);
+        ctx.restore();
+    }
+    ctx.restore();
+}
+
+function drawParticles() {
+    for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        ctx.globalAlpha = p.life; ctx.fillStyle = p.color;
+        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+        ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size); ctx.restore();
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawFloatingTexts() {
+    for (let ft of floatingTexts) {
+        ctx.globalAlpha = ft.life; ctx.fillStyle = '#f1c40f';
+        ctx.font = 'bold 26px Montserrat, sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.strokeStyle = '#000'; ctx.lineWidth = 4; ctx.lineJoin = 'round';
+        ctx.strokeText(ft.text, ft.x, ft.y); ctx.fillText(ft.text, ft.x, ft.y);
+    }
+    ctx.globalAlpha = 1;
+}
+
+function drawKnivesLeft() {
+    if (gameState !== 'playing' && gameState !== 'menu' && gameState !== 'weeklyboss') return;
+    let maxDraw = Math.min(knivesLeft, 9);
+    for (let i = 0; i < maxDraw; i++) {
+        ctx.save(); ctx.translate(35, canvas.height - 80 - (i * 35)); ctx.rotate(-Math.PI / 4); ctx.scale(0.6, 0.6);
+        drawKnifeShape(ctx, cachedSkin, knifeLength); ctx.restore();
+    }
+    if (knivesLeft > 9) { ctx.save(); ctx.fillStyle = 'white'; ctx.font = 'bold 20px Montserrat, sans-serif'; ctx.textAlign = 'left'; ctx.fillText(`+${knivesLeft - 9}`, 50, canvas.height - 80 - (maxDraw * 35) - 10); ctx.restore(); }
+}
+
+function drawCrack() {
+    if (crackAlpha <= 0) return;
+    ctx.save(); ctx.globalAlpha = crackAlpha; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.shadowColor = '#fff'; ctx.shadowBlur = 10;
+    for (const crack of crackLines) { ctx.beginPath(); ctx.moveTo(crack.start.x, crack.start.y); for (const seg of crack.segs) ctx.lineTo(seg.x, seg.y); ctx.stroke(); }
+    ctx.restore();
+}
+
+function drawBgStars() {
+    for (let s of bgStars) { ctx.globalAlpha = s.alpha; ctx.fillStyle = isWeeklyBossMode ? '#ff00aa' : '#fff'; ctx.beginPath(); ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2); ctx.fill(); }
+    ctx.globalAlpha = 1;
+}
+
+let lastTime = 0;
+function updateGame(dt) {
+    for (let s of bgStars) { s.y -= s.speed * dt; if (s.y < -5) { s.y = canvas.height + 5; s.x = Math.random() * canvas.width; } }
+    if (crackAlpha > 0) crackAlpha -= 0.008 * dt;
+    
+    // ФИКС: Принудительный сброс isShattered, если мы вернулись в игру
+    if (gameState === 'playing' && isShattered) isShattered = false;
+    
+    if (gameState === 'menu') { targetAngle += 0.01 * dt; return; }
+    if (gameState === 'playing' || gameState === 'weeklyboss' || gameState === 'stageclear' || gameState === 'weeklyvictory') {
+        if (gameState === 'playing' || gameState === 'weeklyboss') {
+            if (isBossLevel && !isWeeklyBossMode) {
+                bossReverseTimer += dt / 60;
+                if (bossReverseTimer >= BOSS_REVERSE_INTERVAL) { bossReverseTimer = 0; rotationSpeed = -rotationSpeed; screenShake = 6; playSound('reverse'); showToast("⚠️ РЕВЕРС!"); }
+            }
+            if (isWeeklyBossMode && currentWeeklyBossConfig && currentWeeklyBossConfig.storm) {
+                stormTimer += dt / 60;
+                if (stormTimer >= 2) {
+                    stormTimer = 0;
+                    rotationSpeed = (Math.random() < 0.5 ? 1 : -1) * (0.025 + Math.random() * 0.025);
+                    screenShake = 5;
+                    playSound('reverse');
+                }
+            }
+            if (isWeeklyBossMode && currentWeeklyBossConfig && currentWeeklyBossConfig.jester) {
+                jesterTimer += dt / 60;
+                if (jesterTimer >= 1.5) {
+                    jesterTimer = 0;
+                    rotationSpeed = -rotationSpeed;
+                    screenShake = 4;
+                    playSound('reverse');
+                }
+            }
+            
+            targetAngle += rotationSpeed * dt;
+            swayTime += 0.05 * dt;
+            targetOffsetX = Math.sin(swayTime) * swayAmplitudeX;
+            targetOffsetY = Math.sin(swayTime * 1.5) * swayAmplitudeY;
+            
+            if (flyingKnife) {
+                flyingKnife.y -= flyingKnife.speed * dt; flyingKnife.rotation = 0;
+                flyingKnife.trail.push({ x: baseCenterX, y: flyingKnife.y - knifeLength });
+                if (flyingKnife.trail.length > 5) flyingKnife.trail.shift();
+                checkCollisions();
+                
+                if (flyingKnife) {
+                    const ccY = baseCenterY + targetOffsetY, tipY = flyingKnife.y - knifeLength;
+                    if (tipY < ccY - targetRadius) {
+                        flyingKnife = null;
+                        if (knivesLeft <= 0 && stageScore < targetScore) gameOver();
+                        else if (lives > 0) loseLife("❌ Промах!");
+                    }
+                }
+            }
+        }
+        if (screenShake > 0) screenShake -= 0.5 * dt;
+        if (flashAlpha > 0) flashAlpha -= 0.03 * dt;
+        for (let i = particles.length - 1; i >= 0; i--) { let p = particles[i]; p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 0.5 * dt; p.rot += p.rotSpeed * dt; p.life -= 0.03 * dt; if (p.life <= 0) particles.splice(i, 1); }
+        for (let i = floatingTexts.length - 1; i >= 0; i--) { let ft = floatingTexts[i]; ft.y += ft.vy * dt; ft.life -= 0.02 * dt; if (ft.life <= 0) floatingTexts.splice(i, 1); }
+    }
+}
+
+function drawGame() {
+    cachedSkin = getCurrentSkin(); cachedLog = getCurrentLog();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    drawBgStars();
+    
+    if (screenShake > 0) { const sx = (Math.random()-0.5)*screenShake, sy = (Math.random()-0.5)*screenShake; ctx.save(); ctx.translate(sx, sy); }
+    
+    drawLog();
+    
+    if (!isShattered) { 
+        for (let k of knives) { 
+            ctx.save(); ctx.translate(baseCenterX + targetOffsetX, baseCenterY + targetOffsetY); ctx.rotate(targetAngle); ctx.rotate(k.localAngle); ctx.translate(targetRadius, 0); 
+            drawKnife(0, 0, -Math.PI/2, false); 
+            ctx.restore(); 
+        } 
+    }
+    
+    if (flyingKnife) {
+        if (flyingKnife.trail.length > 1) {
+            ctx.beginPath(); ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+            for (let i = 0; i < flyingKnife.trail.length; i++) { const p = flyingKnife.trail[i]; if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y); }
+            ctx.stroke();
+        }
+        drawKnife(baseCenterX, flyingKnife.y, flyingKnife.rotation);
+    } else if (gameState === 'playing' || gameState === 'menu' || gameState === 'weeklyboss') {
+        if (knivesLeft > 0 || gameState === 'menu') { const fy = Math.sin(Date.now() / 200) * 5; drawKnife(baseCenterX, knifeStartY + fy, 0); }
+    }
+    
+    drawKnivesLeft(); drawParticles(); drawFloatingTexts();
+    
+    if (screenShake > 0) ctx.restore();
+    
+    drawCrack();
+    
+    if (flashAlpha > 0) { ctx.fillStyle = `rgba(${flashColor},${flashAlpha})`; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+}
+
+function globalLoop(timestamp) {
+    requestAnimationFrame(globalLoop);
+    try {
+        if (!lastTime) { lastTime = timestamp; return; }
+        let elapsed = timestamp - lastTime; lastTime = timestamp;
+        if (elapsed > 50) elapsed = 16.66;
+        let dt = (elapsed / 16.66) * timeScale;
+        updateGame(dt); drawGame();
+    } catch (e) {
+        console.error("Game loop error:", e);
+        // Экстренный сброс при критической ошибке
+        isShattered = false; 
+        if (gameState === 'stageclear') {
+            gameState = 'playing'; 
+            if(stageClearScreen) stageClearScreen.classList.remove('active');
+        }
+    }
+}
+
+window.addEventListener('resize', () => {
+    updateDimensions(); initBgStars();
+    if (flyingKnife && (gameState === 'playing' || gameState === 'weeklyboss')) { flyingKnife = null; knivesLeft++; updateUI(); showToast("📱 Экран изменён — нож возвращён"); }
+});
+
+window.addEventListener('beforeunload', () => {
+    if (_saveQuestsTimer) saveQuestsNow();
+});
+
+// ==== СТАРТ ====
+initLevel();
+updateUI();
+updateLivesUI();
+initDailyQuests();
+if (checkStreak()) setTimeout(() => showStreakModal(), 400);
+requestAnimationFrame(globalLoop);
+</script>
+</body>
+</html>
